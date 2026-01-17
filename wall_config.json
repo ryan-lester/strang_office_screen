@@ -1,0 +1,7 @@
+{
+  "mode": "AUTO",
+  "unified_file": "strang_mega.html",
+  "left_file": "strang_sketches.html",
+  "center_file": "strang_isometric.html",
+  "right_file": "strang_topography.html"
+}
