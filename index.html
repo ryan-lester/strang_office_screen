@@ -27,41 +27,78 @@
 
 <script>
 
+    // 1. DEFINE YOUR PLAYLIST
+    // Index 0 is reserved for the "Mega Poster" (Collaboration Mode)
+    // Indices 1-3 are your normal loop (Independent Mode)
     const playlist = [
-        'strang_isometric.html',  // Index 0 (Shows at 12pm, 3pm...)
-        'strang_sketches.html',   // Index 1 (Shows at 1pm, 4pm...) <--- ACTIVE NOW
-        'strang_topography.html'  // Index 2 (Shows at 2pm, 5pm...)
+        'strang_mega.html',       // Index 0: Active xx:00 - xx:10
+        'strang_isometric.html',  // Index 1
+        'strang_sketches.html',   // Index 2
+        'strang_topography.html'  // Index 3
     ];
 
-    let currentPosterIndex = -1;
+    // 2. IDENTIFY THIS SCREEN
+    // Checks the URL for ?screen=left, center, or right
+    const urlParams = new URLSearchParams(window.location.search);
+    const screenID = urlParams.get('screen') || 'center'; // Default to center if missing
+
+    let currentPosterURL = "";
 
     function updateDisplay() {
         const now = new Date();
-        const hour = now.getHours(); // 0 - 23
+        const hour = now.getHours();
+        const minute = now.getMinutes();
 
-        const nextPosterIndex = hour % playlist.length;
+        let nextPoster = "";
 
-        if (nextPosterIndex !== currentPosterIndex) {
-            console.log(`Hour is ${hour}. Switching to: ${playlist[nextPosterIndex]}`);
+        // --- MODE A: COLLABORATION (First 10 mins of every hour) ---
+        if (minute < 10) {
+            // Everyone loads the Mega Poster (Index 0)
+            // We pass the screenID so the file knows which "slice" of the image to show
+            nextPoster = `${playlist[0]}?screen=${screenID}`;
+        } 
+        
+        // --- MODE B: RIPPLE LOOP (The rest of the hour) ---
+        else {
+            // 1. Determine Offset based on which TV this is
+            let offset = 0;
+            if (screenID === 'left') offset = 0;   // Left is on time
+            if (screenID === 'center') offset = 1; // Center is 1 hour ahead
+            if (screenID === 'right') offset = 2;  // Right is 2 hours ahead
 
-            const iframe = document.getElementById('displayFrame');
-            iframe.src = playlist[nextPosterIndex];
+            // 2. Calculate the Index
+            // We only cycle through items 1, 2, and 3 (Length - 1 = 3 items)
+            const numberOfPosters = playlist.length - 1; 
+            
+            // Math: (Hour + Offset) % 3 gets us 0, 1, or 2.
+            // We add +1 to shift that result to indices 1, 2, or 3.
+            const index = ((hour + offset) % numberOfPosters) + 1;
+            
+            nextPoster = playlist[index];
+        }
 
-            currentPosterIndex = nextPosterIndex;
+        // 3. SWITCH THE SOURCE (Only if it changed)
+        const iframe = document.getElementById('displayFrame');
+        
+        // We compare just the filename to avoid refreshing if it's already playing
+        // (This prevents the iframe from flickering every 5 seconds)
+        if (!iframe.src.includes(nextPoster)) {
+            console.log(`[${screenID.toUpperCase()}] Time: ${minute}m. Switching to: ${nextPoster}`);
+            iframe.src = nextPoster;
         }
     }
 
     function memoryPurgeCheck() {
+        // Hard refresh at 3:00 AM to keep the browser fast
         const now = new Date();
         if (now.getHours() === 3 && now.getMinutes() === 0) {
             window.location.reload();
         }
     }
 
+    // Run immediately, then check every 5 seconds
     updateDisplay();
-
     setInterval(updateDisplay, 5000);
-
     setInterval(memoryPurgeCheck, 60000);
 
 </script>
