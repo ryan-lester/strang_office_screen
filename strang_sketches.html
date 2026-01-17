@@ -114,7 +114,7 @@
         const poster = document.getElementById("poster");
         const DESIGN_W = 2160;
         const DESIGN_H = 3840;
-        
+
         const windowW = window.innerWidth;
         const windowH = window.innerHeight;
 
@@ -122,7 +122,7 @@
         const scaleX = windowW / DESIGN_W;
         const scaleY = windowH / DESIGN_H;
         const scale = Math.min(scaleX, scaleY);
-        
+
         poster.style.transform = `scale(${scale})`;
     }
 
@@ -180,9 +180,9 @@
                 ctx.moveTo(currentX, currentY);
 
                 ctx.strokeStyle = `rgba(0, 0, 0, ${Math.random() * 0.6})`;
-                
+
                 // Thicker lines for 4K
-                ctx.lineWidth = Math.random() * 3 + 1.5; 
+                ctx.lineWidth = Math.random() * 1 + 0.5;
 
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
