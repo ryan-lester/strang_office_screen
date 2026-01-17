@@ -38,12 +38,12 @@
 
         // --- LOGIC: FLIP EVERY MINUTE ---
         
-        // IF MINUTE IS EVEN (0, 2, 4...) -> SHOW MEGA POSTER
+        // EVEN MINUTES (0, 2, 4...) -> MEGA POSTER
         if (minute % 2 === 0) {
             nextPoster = `${playlist[0]}?screen=${screenID}`;
         } 
         
-        // IF MINUTE IS ODD (1, 3, 5...) -> SHOW INDIVIDUAL POSTERS
+        // ODD MINUTES (1, 3, 5...) -> INDIVIDUAL POSTERS
         else {
             let offset = 0;
             if (screenID === 'left') offset = 0;
@@ -52,14 +52,15 @@
 
             const numberOfPosters = playlist.length - 1; 
             
-            // We use 'minute' here instead of 'hour' so the art changes 
-            // every time we come back to this mode.
+            // We use 'minute' so the individual art changes every time this mode activates
             const index = ((minute + offset) % numberOfPosters) + 1;
             
             nextPoster = playlist[index];
         }
 
         const iframe = document.getElementById('displayFrame');
+        
+        // Only reload if the URL has actually changed
         if (!iframe.src.includes(nextPoster)) {
             console.log(`[${screenID.toUpperCase()}] Minute: ${minute}. Switching to: ${nextPoster}`);
             iframe.src = nextPoster;
@@ -69,14 +70,16 @@
     function memoryPurgeCheck() {
         const now = new Date();
         // Hard refresh at 3:00 AM to clear memory
-        if (now.getHours() === 3 && now.getMinutes() === 0) {
+        if (now.getHours() === 3 && now.getMinutes() === 0 && now.getSeconds() < 10) {
             window.location.reload();
         }
     }
 
     updateDisplay();
-    // Check every 5 seconds to catch the minute change quickly
-    setInterval(updateDisplay, 5000);
+    
+    // CHANGED: Checks every 1 second (1000ms) to ensure perfect sync
+    setInterval(updateDisplay, 1000);
+    
     setInterval(memoryPurgeCheck, 60000);
 
 </script>
