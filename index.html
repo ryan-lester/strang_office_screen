@@ -6,80 +6,130 @@
     <title>Strang Office Display Controller</title>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; }
-        iframe { width: 100vw; height: 100vh; border: none; display: block; }
+        
+        #stage {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            transition: opacity 2.5s ease-in-out; 
+            background: #fff;
+        }
+
+        .visible { opacity: 1; z-index: 10; }
+        .hidden { opacity: 0; z-index: 0; }
+
     </style>
 </head>
 <body>
 
-<iframe id="displayFrame" src=""></iframe>
+<div id="stage">
+    <iframe id="frameA" class="visible" src=""></iframe>
+    <iframe id="frameB" class="hidden" src=""></iframe>
+</div>
 
 <script>
 
     const playlist = [
-        'strang_mega.html',       // Index 0: Collaboration (Mega Poster)
+        'strang_mega.html',       // Index 0
         'strang_isometric.html',  // Index 1
         'strang_sketches.html',   // Index 2
         'strang_topography.html'  // Index 3
     ];
 
+    // 1. ROBUST INPUT HANDLING (Fixes capitalization typos like ?screen=Right)
     const urlParams = new URLSearchParams(window.location.search);
-    const screenID = urlParams.get('screen') || 'center'; 
-
-    // Debugging: Force a specific minute with &minute=X
+    const rawScreenID = urlParams.get('screen') || 'center'; 
+    const screenID = rawScreenID.toLowerCase().trim();
+    
     const debugMinute = urlParams.get('minute');
+
+    let currentActiveFrame = 'frameA';
+    let lastLoadedUrl = "";
 
     function updateDisplay() {
         const now = new Date();
-        
-        // If &minute= is in the URL, use that. Otherwise use real time.
         const minute = debugMinute ? parseInt(debugMinute) : now.getMinutes();
-
         let nextPoster = "";
 
         // --- LOGIC: FLIP EVERY MINUTE ---
         
-        // EVEN MINUTES (0, 2, 4...) -> MEGA POSTER
         if (minute % 2 === 0) {
+            // EVEN MINUTES -> MEGA POSTER
             nextPoster = `${playlist[0]}?screen=${screenID}`;
-        } 
-        
-        // ODD MINUTES (1, 3, 5...) -> INDIVIDUAL POSTERS
-        else {
+        } else {
+            // ODD MINUTES -> INDIVIDUAL ART
             let offset = 0;
             if (screenID === 'left') offset = 0;
             if (screenID === 'center') offset = 1;
             if (screenID === 'right') offset = 2;
 
             const numberOfPosters = playlist.length - 1; 
-            
-            // We use 'minute' so the individual art changes every time this mode activates
             const index = ((minute + offset) % numberOfPosters) + 1;
-            
             nextPoster = playlist[index];
         }
 
-        const iframe = document.getElementById('displayFrame');
-        
-        // Only reload if the URL has actually changed
-        if (!iframe.src.includes(nextPoster)) {
-            console.log(`[${screenID.toUpperCase()}] Minute: ${minute}. Switching to: ${nextPoster}`);
-            iframe.src = nextPoster;
+        // --- SWAP CHECK ---
+        if (nextPoster !== lastLoadedUrl) {
+            console.log(`[${screenID}] Time: ${minute}. Fading to: ${nextPoster}`);
+            swapFrames(nextPoster);
+            lastLoadedUrl = nextPoster;
         }
+    }
+
+    function swapFrames(newUrl) {
+        const active = document.getElementById(currentActiveFrame);
+        const hidden = document.getElementById(currentActiveFrame === 'frameA' ? 'frameB' : 'frameA');
+
+        // 1. Start Loading
+        hidden.src = newUrl;
+
+        // 2. DEFINE THE FADE ACTION
+        const performFade = () => {
+            hidden.className = 'visible';
+            active.className = 'hidden';
+            currentActiveFrame = hidden.id;
+        };
+
+        // 3. THE SAFETY TRIGGER (Fixes the "Stuck" Bug)
+        // We wait for onload, BUT if it takes too long (or misses), 
+        // we force the fade after 500ms anyway.
+        let hasFaded = false;
+
+        hidden.onload = () => {
+            if (!hasFaded) {
+                performFade();
+                hasFaded = true;
+            }
+        };
+
+        // Safety Force
+        setTimeout(() => {
+            if (!hasFaded) {
+                console.log("Force Fading (Load event missed)");
+                performFade();
+                hasFaded = true;
+            }
+        }, 500);
     }
 
     function memoryPurgeCheck() {
         const now = new Date();
-        // Hard refresh at 3:00 AM to clear memory
         if (now.getHours() === 3 && now.getMinutes() === 0 && now.getSeconds() < 10) {
             window.location.reload();
         }
     }
 
     updateDisplay();
-    
-    // CHANGED: Checks every 1 second (1000ms) to ensure perfect sync
-    setInterval(updateDisplay, 1000);
-    
+    setInterval(updateDisplay, 1000); 
     setInterval(memoryPurgeCheck, 60000);
 
 </script>
