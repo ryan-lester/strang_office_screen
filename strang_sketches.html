@@ -14,14 +14,15 @@
             background: #e6e6e6;
             width: 100vw;
             height: 100vh;
+            overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
-            overflow: hidden;
             font-family: "DIN Pro", "Futura", Arial, sans-serif;
         }
 
         .wrapper {
+            position: relative;
             width: 100%;
             height: 100%;
             display: flex;
@@ -29,16 +30,15 @@
             align-items: center;
         }
 
+        /* 4K Portrait Lock */
         .poster {
-            width: 2000px;
-            height: 3500px;
+            width: 2160px;
+            height: 3840px;
             background: #fdfdfd;
-            position: relative;
+            position: absolute;
             overflow: hidden;
             box-shadow: 0 0 50px rgba(0,0,0,0.2);
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            transform-origin: center center;
         }
 
         #scribbleCanvas {
@@ -50,18 +50,10 @@
             z-index: 1;
         }
 
-        .logo {
-            width: 85%;
-            display: block;
-            margin: 0;
-            position: relative;
-            z-index: 20;
-        }
-
         .meta-layer {
             position: absolute;
-            top: 100px; left: 100px; right: 100px; bottom: 100px;
-            z-index: 30; /* Above Scribbles (1) and Logo (20) */
+            top: 140px; left: 140px; right: 140px; bottom: 140px;
+            z-index: 30;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -72,11 +64,22 @@
             display: flex;
             justify-content: space-between;
             font-family: "Roboto Mono", monospace;
-            font-size: 28px;
-            color: #222222; /* Matches Scribble Ink */
+            font-size: 42px; /* Adjusted for 4K */
+            color: #222222;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 3px;
             font-weight: 500;
+        }
+
+        .logo {
+            width: 85%;
+            display: block;
+            margin: 0;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 20;
         }
 
     </style>
@@ -107,6 +110,22 @@
     const timerEl = document.getElementById('timer');
     const weatherEl = document.getElementById('weather');
 
+    function scalePoster() {
+        const poster = document.getElementById("poster");
+        const DESIGN_W = 2160;
+        const DESIGN_H = 3840;
+        
+        const windowW = window.innerWidth;
+        const windowH = window.innerHeight;
+
+        // Calculate scale to FIT the screen (contain) without stretching
+        const scaleX = windowW / DESIGN_W;
+        const scaleY = windowH / DESIGN_H;
+        const scale = Math.min(scaleX, scaleY);
+        
+        poster.style.transform = `scale(${scale})`;
+    }
+
     function updateTime() {
         const now = new Date();
         const estTime = new Intl.DateTimeFormat('en-US', {
@@ -135,31 +154,17 @@
                 weatherEl.innerText = "--°F";
             }
         } catch (error) {
-            console.error("Weather fetch failed:", error);
             weatherEl.innerText = "OFFLINE";
         }
-    }
-
-    function scalePoster() {
-        const poster = document.getElementById("poster");
-        const wrapper = document.querySelector(".wrapper");
-        const DESIGN_W = 2000;
-        const DESIGN_H = 3500;
-        
-        if (wrapper.clientWidth === 0) return;
-
-        const scaleX = wrapper.clientWidth / DESIGN_W;
-        const scaleY = wrapper.clientHeight / DESIGN_H;
-        const scale = Math.min(scaleX, scaleY);
-        poster.style.transform = `scale(${scale})`;
     }
 
     function initScribbleCanvas() {
         const canvas = document.getElementById('scribbleCanvas');
         const ctx = canvas.getContext('2d');
 
-        canvas.width = 2000;
-        canvas.height = 3500;
+        // Set to 4K resolution
+        canvas.width = 2160;
+        canvas.height = 3840;
 
         function drawFrame() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -169,12 +174,15 @@
             for(let i = 0; i < numScribbles; i++) {
                 ctx.beginPath();
 
+                // Random start
                 let currentX = Math.random() * canvas.width;
                 let currentY = Math.random() * canvas.height;
                 ctx.moveTo(currentX, currentY);
 
                 ctx.strokeStyle = `rgba(0, 0, 0, ${Math.random() * 0.6})`;
-                ctx.lineWidth = Math.random() * 1 + 0.9;
+                
+                // Thicker lines for 4K
+                ctx.lineWidth = Math.random() * 3 + 1.5; 
 
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
@@ -182,7 +190,7 @@
                 const segments = Math.floor(Math.random() * 15) + 10;
 
                 for(let j=0; j<segments; j++) {
-                    const range = 900;
+                    const range = 1200; // Larger scribbles for 4K
 
                     const cpX = currentX + (Math.random() - 0.5) * range;
                     const cpY = currentY + (Math.random() - 0.5) * range;
@@ -194,7 +202,6 @@
                     currentX = endX;
                     currentY = endY;
 
-                    // Keep chaotic lines mostly on screen
                     if(currentX < -400 || currentX > canvas.width + 400) currentX = Math.random() * canvas.width;
                     if(currentY < -400 || currentY > canvas.height + 400) currentY = Math.random() * canvas.height;
                 }
