@@ -41,13 +41,12 @@
             align-items: center;
         }
 
-        /* --- THE FIX IS HERE --- */
         #isoCanvas {
-            position: absolute; /* Changed from relative to absolute */
-            top: -100%;         /* Center the 300% canvas */
-            left: -100%;        /* Center the 300% canvas */
-            width: 300%;
-            height: 300%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%; 
+            height: 100%;
             z-index: 1;
         }
 
@@ -159,12 +158,12 @@
         const canvas = document.getElementById('isoCanvas');
         const ctx = canvas.getContext('2d');
 
+        // Match the Poster resolution exactly
         canvas.width = 2000;
         canvas.height = 3500;
 
         let time = 0;
         
-        // These are the tile sizes - should create flat, wide diamonds
         const tileWidth = 60;
         const tileHeight = 30;
 
@@ -216,8 +215,8 @@
         function drawFrame() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            for (let x = -12; x <= 12; x++) {
-                for (let y = -12; y <= 12; y++) {
+            for (let x = -32; x <= 32; x++) {
+                for (let y = -32; y <= 32; y++) {
                     const dist = Math.sqrt(x*x + y*y);
                     let z = Math.sin(dist * 0.2 - time) * 40 + 40;
                     drawBlock(x, y, z);
