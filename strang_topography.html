@@ -14,14 +14,15 @@
             background: #f4f4f4;
             width: 100vw;
             height: 100vh;
+            overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
-            overflow: hidden;
             font-family: "DIN Pro", "Futura", Arial, sans-serif;
         }
 
         .wrapper {
+            position: relative;
             width: 100%;
             height: 100%;
             display: flex;
@@ -29,16 +30,15 @@
             align-items: center;
         }
 
+        /* 4K Portrait Lock */
         .poster {
-            width: 2000px;
-            height: 3500px;
+            width: 2160px;
+            height: 3840px;
             background: #ffffff;
-            position: relative;
+            position: absolute;
             overflow: hidden;
             box-shadow: 0 0 50px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            transform-origin: center center;
         }
 
         #topoCanvas {
@@ -47,12 +47,12 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 1; /* Lowest Z-index so it sits behind everything */
+            z-index: 1; 
         }
 
         .meta-layer {
             position: absolute;
-            top: 100px; left: 100px; right: 100px; bottom: 100px;
+            top: 140px; left: 140px; right: 140px; bottom: 140px;
             z-index: 10;
             pointer-events: none;
             display: flex;
@@ -64,17 +64,20 @@
             display: flex;
             justify-content: space-between;
             font-family: "Roboto Mono", monospace;
-            font-size: 28px;
+            font-size: 42px; /* Adjusted for 4K */
             color: #000;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 3px;
         }
 
         .logo {
             width: 85%;
             display: block;
             margin: 0;
-            position: relative;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             z-index: 20;
         }
 
@@ -110,16 +113,16 @@
 
     function scalePoster() {
         const poster = document.getElementById("poster");
-        const wrapper = document.querySelector(".wrapper");
-        const DESIGN_W = 2000;
-        const DESIGN_H = 3500;
+        const DESIGN_W = 2160;
+        const DESIGN_H = 3840;
         
-        // Ensure wrapper has dimensions before math
-        if (wrapper.clientWidth === 0) return;
+        const windowW = window.innerWidth;
+        const windowH = window.innerHeight;
 
-        const scaleX = wrapper.clientWidth / DESIGN_W;
-        const scaleY = wrapper.clientHeight / DESIGN_H;
+        const scaleX = windowW / DESIGN_W;
+        const scaleY = windowH / DESIGN_H;
         const scale = Math.min(scaleX, scaleY);
+        
         poster.style.transform = `scale(${scale})`;
     }
 
@@ -158,30 +161,34 @@
         const canvas = document.getElementById('topoCanvas');
         const ctx = canvas.getContext('2d');
 
-        canvas.width = 2000;
-        canvas.height = 3500;
+        // Set to 4K resolution
+        canvas.width = 2160;
+        canvas.height = 3840;
 
         let time = 0;
 
         function drawFrame() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            ctx.lineWidth = 2.5;
-            ctx.strokeStyle = '#111'; // Dark Grey/Black Ink
+            // Thicker lines for 4K
+            ctx.lineWidth = 4.0; 
+            ctx.strokeStyle = '#111';
 
-            // Draw 45 horizontal lines (elevation lines)
-            const lines = 45;
+            // More lines for the taller screen (increased from 45 to 60)
+            const lines = 60;
             const gap = canvas.height / lines;
 
             for (let i = 0; i < lines; i++) {
                 ctx.beginPath();
 
-                for (let x = 0; x <= canvas.width; x += 20) {
+                // Step size increased for performance on large canvas
+                for (let x = 0; x <= canvas.width; x += 40) {
 
                     const noise1 = Math.sin((x * 0.002) + (i * 0.1) + time);
                     const noise2 = Math.sin((x * 0.005) - (i * 0.2) + (time * 1.5));
 
-                    const amplitude = 100 + (Math.sin(time * 0.5) * 20);
+                    // Larger amplitude for 4K
+                    const amplitude = 180 + (Math.sin(time * 0.5) * 40);
 
                     const y = (i * gap) + ((noise1 + noise2) * amplitude);
 
