@@ -2,77 +2,263 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Strang Office Display Controller</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strang Office Controller</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; }
-        iframe { width: 100vw; height: 100vh; border: none; display: block; }
+        /* GLOBAL RESET */
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Courier New', monospace; }
+
+        /* --- DISPLAY MODE STYLES (TVs) --- */
+        #displayFrame { width: 100vw; height: 100vh; border: none; display: none; }
+        
+        /* --- ADMIN MODE STYLES (Control Panel) --- */
+        #adminPanel { display: none; color: #0f0; padding: 20px; height: 100%; overflow-y: auto; text-align: center; }
+        h1 { margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px; border-bottom: 1px solid #0f0; display: inline-block; padding-bottom: 5px; }
+        
+        /* Preview Wall */
+        .wall-preview { display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; }
+        .screen-box {
+            width: 120px; height: 213px; /* 9:16 Ratio */
+            border: 1px solid #333; background: #111;
+            position: relative;
+        }
+        .screen-iframe {
+            width: 2160px; height: 3840px;
+            transform: scale(0.055); transform-origin: 0 0;
+            border: none; pointer-events: none;
+        }
+        
+        /* Controls */
+        .controls { background: #111; border: 1px solid #333; padding: 20px; max-width: 600px; margin: 0 auto; border-radius: 8px; }
+        .btn-group { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
+        button { padding: 10px 20px; background: #000; color: #0f0; border: 1px solid #0f0; cursor: pointer; font-weight: bold; }
+        button:hover, button.active { background: #0f0; color: #000; }
+        
+        select { background: #000; color: #fff; padding: 5px; border: 1px solid #555; width: 100%; margin-bottom: 10px; }
+        label { display: block; text-align: left; color: #888; font-size: 0.8rem; margin-bottom: 2px; }
+        
+        .json-output { width: 100%; height: 80px; background: #000; color: #ff0; border: 1px dashed #555; padding: 10px; font-size: 0.8rem; margin-top: 15px; }
+        .instructions { font-size: 0.8rem; color: #aaa; margin-top: 5px; }
+
     </style>
 </head>
 <body>
 
-<iframe id="displayFrame" src=""></iframe>
+    <iframe id="displayFrame" src=""></iframe>
+
+    <div id="adminPanel">
+        <h1>STRANG COMMAND</h1>
+        
+        <div class="wall-preview">
+            <div class="screen-box"><iframe id="prevL" class="screen-iframe"></iframe></div>
+            <div class="screen-box"><iframe id="prevC" class="screen-iframe"></iframe></div>
+            <div class="screen-box"><iframe id="prevR" class="screen-iframe"></iframe></div>
+        </div>
+
+        <div class="controls">
+            <div class="btn-group">
+                <button id="btnAuto" onclick="setMode('AUTO')" class="active">AUTO (CLOCK)</button>
+                <button id="btnMega" onclick="setMode('FORCE_MEGA')">UNIFIED</button>
+                <button id="btnManual" onclick="setMode('MANUAL')">SEPARATE</button>
+            </div>
+
+            <div id="unifiedInputs" style="display:none;">
+                <label>Unified File</label>
+                <select id="selMega" onchange="updatePreview()">
+                    <option value="strang_mega.html">Mega Poster (Fur/Organic)</option>
+                </select>
+            </div>
+
+            <div id="manualInputs" style="display:none;">
+                <label>Left Screen</label>
+                <select id="selL" onchange="updatePreview()"></select>
+                <label>Center Screen</label>
+                <select id="selC" onchange="updatePreview()"></select>
+                <label>Right Screen</label>
+                <select id="selR" onchange="updatePreview()"></select>
+            </div>
+
+            <button style="width:100%; margin-top:20px;" onclick="generateConfig()">GENERATE CONFIG CODE</button>
+            <textarea id="output" class="json-output" readonly></textarea>
+            <div class="instructions">1. Copy code above. 2. Paste into 'wall_config.json' in GitHub.</div>
+        </div>
+    </div>
 
 <script>
-
-    const playlist = [
-        'strang_mega.html',       // Index 0: Collaboration (Mega Poster)
-        'strang_isometric.html',  // Index 1
-        'strang_sketches.html',   // Index 2
-        'strang_topography.html'  // Index 3
+    // --- CONFIGURATION ---
+    // PASTE YOUR RAW GITHUB JSON LINK HERE:
+    const REPO_CONFIG_URL = 'https://raw.githubusercontent.com/ryan-lester/strangoffice/main/wall_config.json';
+    
+    const FILES = [
+        {name: "Isometric", val: "strang_isometric.html"},
+        {name: "Sketches", val: "strang_sketches.html"},
+        {name: "Topography", val: "strang_topography.html"}
+    ];
+    const MEGA_FILES = [
+        {name: "Unified Field", val: "strang_mega.html"}
     ];
 
+    // --- INIT ---
     const urlParams = new URLSearchParams(window.location.search);
     const screenID = urlParams.get('screen') || 'center'; 
+    const isAdmin = urlParams.get('mode') === 'admin';
 
-    // --- NEW: TESTING FEATURE ---
-    // Allows you to force the time by adding &minute=0 to the URL
-    const debugMinute = urlParams.get('minute');
+    if (isAdmin) {
+        initAdmin();
+    } else {
+        initReceiver();
+    }
 
-    function updateDisplay() {
+    // ==========================================
+    // LOGIC A: THE RECEIVER (TVs)
+    // ==========================================
+    async function initReceiver() {
+        document.getElementById('displayFrame').style.display = 'block';
+        
+        // 1. Start loop
+        checkDirectives();
+        setInterval(checkDirectives, 5000); // Check GitHub every 5s
+        setInterval(() => {
+            // Hard refresh at 3am
+            if(new Date().getHours() === 3 && new Date().getMinutes() === 0) window.location.reload();
+        }, 60000);
+    }
+
+    async function checkDirectives() {
+        try {
+            // Fetch Config from GitHub (bypass cache with random number)
+            const response = await fetch(REPO_CONFIG_URL + '?v=' + Math.random());
+            const config = await response.json();
+            
+            applyConfig(config);
+        } catch (e) {
+            console.log("GitHub unreachable, using fallback.");
+        }
+    }
+
+    function applyConfig(config) {
+        let nextPoster = "";
         const now = new Date();
         const hour = now.getHours();
-        
-        // If &minute= is in the URL, use that. Otherwise use real time.
-        const minute = debugMinute ? parseInt(debugMinute) : now.getMinutes();
+        const minute = now.getMinutes();
 
-        let nextPoster = "";
-
-        // --- MODE A: COLLABORATION (First 10 mins OR if forced) ---
-        if (minute < 10) {
-            nextPoster = `${playlist[0]}?screen=${screenID}`;
-        } 
+        // SCENARIO 1: FORCED UNIFIED
+        if (config.mode === 'FORCE_MEGA') {
+            nextPoster = `${config.unified_file}?screen=${screenID}`;
+        }
         
-        // --- MODE B: RIPPLE LOOP ---
+        // SCENARIO 2: FORCED MANUAL
+        else if (config.mode === 'MANUAL') {
+            if(screenID === 'left') nextPoster = config.left_file;
+            if(screenID === 'center') nextPoster = config.center_file;
+            if(screenID === 'right') nextPoster = config.right_file;
+        }
+
+        // SCENARIO 3: AUTO (Use Clock Logic)
         else {
-            let offset = 0;
-            if (screenID === 'left') offset = 0;
-            if (screenID === 'center') offset = 1;
-            if (screenID === 'right') offset = 2;
-
-            const numberOfPosters = playlist.length - 1; 
-            const index = ((hour + offset) % numberOfPosters) + 1;
-            
-            nextPoster = playlist[index];
+            // First 10 mins = Mega
+            if (minute < 10) {
+                nextPoster = `${config.unified_file}?screen=${screenID}`;
+            } 
+            // Rest of hour = Ripple
+            else {
+                let offset = 0;
+                if(screenID === 'center') offset = 1;
+                if(screenID === 'right') offset = 2;
+                
+                // Cycle 1,2,3 based on hour
+                const idx = ((hour + offset) % 3);
+                nextPoster = FILES[idx].val;
+            }
         }
 
         const iframe = document.getElementById('displayFrame');
         if (!iframe.src.includes(nextPoster)) {
-            console.log(`[${screenID.toUpperCase()}] Switching to: ${nextPoster}`);
+            console.log(`Switching to: ${nextPoster}`);
             iframe.src = nextPoster;
         }
     }
 
-    function memoryPurgeCheck() {
-        const now = new Date();
-        if (now.getHours() === 3 && now.getMinutes() === 0) {
-            window.location.reload();
+    // ==========================================
+    // LOGIC B: THE ADMIN PANEL (You)
+    // ==========================================
+    let currentMode = 'AUTO';
+
+    function initAdmin() {
+        document.getElementById('adminPanel').style.display = 'block';
+        document.body.style.overflow = 'auto'; // Allow scrolling
+
+        // Populate Dropdowns
+        const selL = document.getElementById('selL');
+        const selC = document.getElementById('selC');
+        const selR = document.getElementById('selR');
+        
+        FILES.forEach(f => {
+            const opt = `<option value="${f.val}">${f.name}</option>`;
+            selL.innerHTML += opt;
+            selC.innerHTML += opt;
+            selR.innerHTML += opt;
+        });
+        
+        // Set Defaults
+        selL.selectedIndex = 1; // Sketches
+        selC.selectedIndex = 0; // Iso
+        selR.selectedIndex = 2; // Topo
+
+        updatePreview();
+    }
+
+    function setMode(mode) {
+        currentMode = mode;
+        
+        // Update Buttons
+        document.querySelectorAll('.btn-group button').forEach(b => b.classList.remove('active'));
+        if(mode === 'AUTO') document.getElementById('btnAuto').classList.add('active');
+        if(mode === 'FORCE_MEGA') document.getElementById('btnMega').classList.add('active');
+        if(mode === 'MANUAL') document.getElementById('btnManual').classList.add('active');
+
+        // Show/Hide Inputs
+        document.getElementById('unifiedInputs').style.display = mode === 'FORCE_MEGA' ? 'block' : 'none';
+        document.getElementById('manualInputs').style.display = mode === 'MANUAL' ? 'block' : 'none';
+        
+        updatePreview();
+    }
+
+    function updatePreview() {
+        const pL = document.getElementById('prevL');
+        const pC = document.getElementById('prevC');
+        const pR = document.getElementById('prevR');
+
+        if (currentMode === 'FORCE_MEGA' || currentMode === 'AUTO') {
+            // Note: Auto preview just shows Mega for simplicity, 
+            // or we could simulate time, but Mega is the "safe" preview.
+            const f = document.getElementById('selMega').value;
+            pL.src = f + "?screen=left";
+            pC.src = f + "?screen=center";
+            pR.src = f + "?screen=right";
+        } else {
+            pL.src = document.getElementById('selL').value;
+            pC.src = document.getElementById('selC').value;
+            pR.src = document.getElementById('selR').value;
         }
     }
 
-    updateDisplay();
-    setInterval(updateDisplay, 5000);
-    setInterval(memoryPurgeCheck, 60000);
+    window.generateConfig = function() {
+        const config = {
+            mode: currentMode,
+            unified_file: document.getElementById('selMega').value,
+            left_file: document.getElementById('selL').value,
+            center_file: document.getElementById('selC').value,
+            right_file: document.getElementById('selR').value
+        };
+        
+        const json = JSON.stringify(config, null, 2);
+        const out = document.getElementById('output');
+        out.value = json;
+        out.select();
+        document.execCommand('copy');
+        alert("Config Copied! \n\nNow open 'wall_config.json' in GitHub and paste this.");
+    }
 
 </script>
 </body>
