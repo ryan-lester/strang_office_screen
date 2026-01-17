@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>STRANG Poster - Isometric Grid Live</title>
     <style>
         @import url('https://fonts.cdnfonts.com/css/din-pro');
@@ -10,7 +11,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            background: #00000;
+            background: #000000; /* Fixed hex code */
             width: 100vw;
             height: 100vh;
             display: flex;
@@ -76,7 +77,7 @@
             margin: 0;
             position: absolute;
             z-index: 20;
-            filter: invert(1);
+            filter: invert(1); /* Inverts black logo to white */
         }
 
     </style>
@@ -114,6 +115,10 @@
         const wrapper = document.querySelector(".wrapper");
         const DESIGN_W = 2000;
         const DESIGN_H = 3500;
+        
+        // Ensure wrapper has dimensions before math
+        if (wrapper.clientWidth === 0) return;
+
         const scaleX = wrapper.clientWidth / DESIGN_W;
         const scaleY = wrapper.clientHeight / DESIGN_H;
         const scale = Math.min(scaleX, scaleY);
