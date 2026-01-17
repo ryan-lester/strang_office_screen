@@ -13,14 +13,13 @@
             width: 100vw;
             height: 100vh;
             overflow: hidden;
-            display: flex;
-            justify-content: flex-start; /* Align left so we can shift it */
-            align-items: top;
+            position: relative;
         }
 
-        /* THE MEGA CONTAINER 
-           Total Width = 2160px * 3 Screens = 6480px
-           Total Height = 3840px (4K Portrait)
+        /* THE RIGID GRID
+           Total Width = 6480px (3 x 2160px)
+           Total Height = 3840px (1 x 3840px)
+           This container is immovable in its dimensions.
         */
         .mega-wrapper {
             width: 6480px; 
@@ -28,23 +27,22 @@
             position: absolute;
             top: 0;
             left: 0;
-            background: #000; /* Black background behind logo */
-            transition: transform 0s; /* Instant shift, no animation */
-            
-            /* Center the content inside the mega-wrapper */
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            background: #000; 
+            transform-origin: 0 0; /* Scale from top-left corner always */
         }
 
-        /* THE IMAGE ITSELF */
+        /* THE IMAGE
+           We force it to fill the grid exactly.
+           object-fit: contain = Keeps logo shape perfect, adds black bars if needed.
+           object-fit: cover = Zooms in to fill screen, might crop edges.
+        */
         .mega-image {
-            /* Adjust this size to control how big the logo is across the 3 screens */
-            width: 80%; 
-            height: auto;
-            max-height: 90%;
-            object-fit: contain;
-            filter: invert(1); /* Invert to white if your logo is black */
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: contain; /* Keeps the logo looking correct */
+            object-position: center center; /* Dead center of the 3-screen array */
+            filter: invert(1); /* White logo on black */
         }
 
     </style>
@@ -60,49 +58,43 @@
         const wrapper = document.getElementById('megaWrapper');
         
         // 1. IDENTIFY THE SCREEN
-        // Check URL for ?screen=left, center, or right
         const urlParams = new URLSearchParams(window.location.search);
-        const screenID = urlParams.get('screen') || 'center'; // Default to center
+        const screenID = urlParams.get('screen') || 'center'; 
 
-        // 2. DEFINE THE SHIFT
-        // Each screen is 2160px wide. We shift the whole wrapper left to reveal the correct slice.
+        // 2. DEFINE THE EXACT PIXEL SHIFT
+        // Left Screen   = Starts at pixel 0
+        // Center Screen = Starts at pixel 2160
+        // Right Screen  = Starts at pixel 4320
         let shiftX = 0;
 
-        if (screenID === 'left') {
-            shiftX = 0;             // Start at 0px
-        } else if (screenID === 'center') {
-            shiftX = -2160;         // Shift left by 1 screen width
-        } else if (screenID === 'right') {
-            shiftX = -4320;         // Shift left by 2 screen widths
-        }
+        if (screenID === 'left')   shiftX = 0;
+        if (screenID === 'center') shiftX = -2160;
+        if (screenID === 'right')  shiftX = -4320;
 
-        // 3. APPLY THE TRANSFORM
-        // We also apply the standard "Scale to Fit" logic so it works on your phone/TV
-        
-        // Get current window size
+        // 3. CALCULATE SCALE (Fit to your actual device/TV)
         const windowW = window.innerWidth;
         const windowH = window.innerHeight;
         
-        // Target Resolution (Single Screen 4K)
+        // The goal is to fit ONE 2160x3840 slice into your current window
         const targetW = 2160;
         const targetH = 3840;
 
-        // Calculate Scale Factor (Fit to screen)
+        // Calculate how much we need to shrink the 4K content to fit your screen
         const scaleX = windowW / targetW;
         const scaleY = windowH / targetH;
         const scale = Math.min(scaleX, scaleY);
 
-        // COMBINE: 
-        // 1. Scale it down to fit the device
-        // 2. Translate (Shift) it to show the correct slice
-        // Note: The order matters! We shift inside the wrapper logic, but here we just scale the view.
-        // Actually, simpler method: Transform the wrapper to shift, then scale the BODY.
-        
-        wrapper.style.transformOrigin = "top left";
-        wrapper.style.transform = `scale(${scale}) translate(${shiftX}px, 0px)`;
+        // 4. APPLY TRANSFORM
+        // Step A: Calculate exactly how many pixels to move LEFT based on the CURRENT scale.
+        // If we just moved -2160px, it would move off screen on a phone. 
+        // We must move -2160 * scale.
+        const currentShift = shiftX * scale;
+
+        // Step B: Apply the move and the shrink
+        wrapper.style.transform = `translate(${currentShift}px, 0px) scale(${scale})`;
     }
 
-    // Run on load and resize
+    // Run immediately and whenever window resizes
     window.addEventListener('load', setupScreen);
     window.addEventListener('resize', setupScreen);
 
