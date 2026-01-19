@@ -2,45 +2,39 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Office Display Controller - Strang Mega</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Strang Office Display Controller</title>
     <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
+        body, html { 
+            margin: 0; 
+            padding: 0; 
+            width: 100%; 
+            height: 100%; 
+            overflow: hidden; 
             background-color: #000; 
         }
 
-        iframe {
-            display: block;
-            width: 100vw;
-            height: 100vh;
-            border: none;
-            overflow: hidden;
+        iframe { 
+            display: block; 
+            width: 100vw; 
+            height: 100vh; 
+            border: none; 
+            overflow: hidden; 
         }
     </style>
 </head>
 <body>
 
-    <iframe id="displayFrame" title="Screen Content"></iframe>
+    <iframe id="displayFrame"></iframe>
 
     <script>
-       
         const urlParams = new URLSearchParams(window.location.search);
-        const screenId = urlParams.get('screen') || 'center'; 
-
-        const baseUrl = 'https://ryan-lester.github.io/strang_office_screen/';
-
-       
+        const screenId = (urlParams.get('screen') || 'center').toLowerCase().trim();
+        
+        const baseUrl = 'https://ryan-lester.github.io/strang_office_screen/strang_mega.html';
         const targetUrl = `${baseUrl}?screen=${screenId}`;
 
-        const iframe = document.getElementById('displayFrame');
-        iframe.src = targetUrl;
-
-        console.log(`Display initialized. Mode: Fixed. Screen: ${screenId}. Loading: ${targetUrl}`);
+        document.getElementById('displayFrame').src = targetUrl;
     </script>
 
 </body>
