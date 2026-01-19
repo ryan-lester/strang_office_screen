@@ -2,136 +2,46 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Strang Office Display Controller</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Office Display Controller - Strang Mega</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; }
-        
-        #stage {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000; 
         }
 
         iframe {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            display: block;
+            width: 100vw;
+            height: 100vh;
             border: none;
-            transition: opacity 2.5s ease-in-out; 
-            background: #fff;
+            overflow: hidden;
         }
-
-        .visible { opacity: 1; z-index: 10; }
-        .hidden { opacity: 0; z-index: 0; }
-
     </style>
 </head>
 <body>
 
-<div id="stage">
-    <iframe id="frameA" class="visible" src=""></iframe>
-    <iframe id="frameB" class="hidden" src=""></iframe>
-</div>
+    <iframe id="displayFrame" title="Screen Content"></iframe>
 
-<script>
+    <script>
+       
+        const urlParams = new URLSearchParams(window.location.search);
+        const screenId = urlParams.get('screen') || 'center'; 
 
-    const playlist = [
-        'strang_mega.html',       // Index 0
-        'strang_isometric.html',  // Index 1
-        'strang_sketches.html',   // Index 2
-        'strang_topography.html'  // Index 3
-    ];
+        const baseUrl = 'https://ryan-lester.github.io/strang_office_screen/';
 
-    // 1. ROBUST INPUT HANDLING (Fixes capitalization typos like ?screen=Right)
-    const urlParams = new URLSearchParams(window.location.search);
-    const rawScreenID = urlParams.get('screen') || 'center'; 
-    const screenID = rawScreenID.toLowerCase().trim();
-    
-    const debugMinute = urlParams.get('minute');
+       
+        const targetUrl = `${baseUrl}?screen=${screenId}`;
 
-    let currentActiveFrame = 'frameA';
-    let lastLoadedUrl = "";
+        const iframe = document.getElementById('displayFrame');
+        iframe.src = targetUrl;
 
-    function updateDisplay() {
-        const now = new Date();
-        const minute = debugMinute ? parseInt(debugMinute) : now.getMinutes();
-        let nextPoster = "";
+        console.log(`Display initialized. Mode: Fixed. Screen: ${screenId}. Loading: ${targetUrl}`);
+    </script>
 
-        // --- LOGIC: FLIP EVERY MINUTE ---
-        
-        if (minute % 2 === 0) {
-            // EVEN MINUTES -> MEGA POSTER
-            nextPoster = `${playlist[0]}?screen=${screenID}`;
-        } else {
-            // ODD MINUTES -> INDIVIDUAL ART
-            let offset = 0;
-            if (screenID === 'left') offset = 0;
-            if (screenID === 'center') offset = 1;
-            if (screenID === 'right') offset = 2;
-
-            const numberOfPosters = playlist.length - 1; 
-            const index = ((minute + offset) % numberOfPosters) + 1;
-            nextPoster = playlist[index];
-        }
-
-        // --- SWAP CHECK ---
-        if (nextPoster !== lastLoadedUrl) {
-            console.log(`[${screenID}] Time: ${minute}. Fading to: ${nextPoster}`);
-            swapFrames(nextPoster);
-            lastLoadedUrl = nextPoster;
-        }
-    }
-
-    function swapFrames(newUrl) {
-        const active = document.getElementById(currentActiveFrame);
-        const hidden = document.getElementById(currentActiveFrame === 'frameA' ? 'frameB' : 'frameA');
-
-        // 1. Start Loading
-        hidden.src = newUrl;
-
-        // 2. DEFINE THE FADE ACTION
-        const performFade = () => {
-            hidden.className = 'visible';
-            active.className = 'hidden';
-            currentActiveFrame = hidden.id;
-        };
-
-        // 3. THE SAFETY TRIGGER (Fixes the "Stuck" Bug)
-        // We wait for onload, BUT if it takes too long (or misses), 
-        // we force the fade after 500ms anyway.
-        let hasFaded = false;
-
-        hidden.onload = () => {
-            if (!hasFaded) {
-                performFade();
-                hasFaded = true;
-            }
-        };
-
-        // Safety Force
-        setTimeout(() => {
-            if (!hasFaded) {
-                console.log("Force Fading (Load event missed)");
-                performFade();
-                hasFaded = true;
-            }
-        }, 500);
-    }
-
-    function memoryPurgeCheck() {
-        const now = new Date();
-        if (now.getHours() === 3 && now.getMinutes() === 0 && now.getSeconds() < 10) {
-            window.location.reload();
-        }
-    }
-
-    updateDisplay();
-    setInterval(updateDisplay, 1000); 
-    setInterval(memoryPurgeCheck, 60000);
-
-</script>
 </body>
 </html>
