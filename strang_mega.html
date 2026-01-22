@@ -11,7 +11,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            background: #e6e6e6;
+            background: #fdfdfd; /* Changed from grey to white to match canvas to prevent flash */
             width: 100vw;
             height: 100vh;
             overflow: hidden;
@@ -47,19 +47,20 @@
         .corner-text {
             position: absolute;
             font-family: "Roboto Mono", monospace;
-            font-size: 42px;
+            /* RESIZED: Smaller font to match previous scaled look */
+            font-size: 24px; 
             color: #222222;
             text-transform: uppercase;
-            letter-spacing: 3px;
+            letter-spacing: 2px;
             font-weight: 500;
-            display: none; /* Hidden by default, revealed by JS */
+            display: none; 
         }
 
-        /* Positioning relative to the LOCAL screen */
-        .top-left { top: 60px; left: 60px; }
-        .bottom-left { bottom: 60px; left: 60px; }
-        .top-right { top: 60px; right: 60px; text-align: right; }
-        .bottom-right { bottom: 60px; right: 60px; text-align: right; }
+        /* RESIZED: Tighter margins (30px instead of 60px) */
+        .top-left { top: 30px; left: 30px; }
+        .bottom-left { bottom: 30px; left: 30px; }
+        .top-right { top: 30px; right: 30px; text-align: right; }
+        .bottom-right { bottom: 30px; right: 30px; text-align: right; }
 
         /* CENTER SCREEN */
         .center-logo-container {
@@ -68,11 +69,12 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            display: none; /* Hidden by default */
+            display: none; 
         }
 
         .mega-logo {
-            width: 60%; 
+            /* RESIZED: Back to original 32% size */
+            width: 32%; 
             filter: brightness(0) invert(0);
             mix-blend-mode: difference;
         }
@@ -100,10 +102,8 @@
 
 <script>
     // --- CONFIGURATION ---
-    // The "Virtual" Total Resolution (The Field)
     const TOTAL_W = 6480;
     const TOTAL_H = 3840;
-    // The "Physical" Single Screen Resolution
     const SCREEN_W = 2160;
     const SCREEN_H = 3840;
 
@@ -146,12 +146,10 @@
     function initWebGL() {
         const canvas = document.getElementById('furCanvas');
         scene = new THREE.Scene();
+        
+        // FIX 1 PART A: Explicitly set background color
         scene.background = new THREE.Color(0xfdfdfd);
 
-        // --- OPTIMIZATION: CAMERA OFFSET ---
-        // We create a camera that thinks it sees the whole world (TOTAL_W),
-        // but we force it to only render a specific window (SCREEN_W).
-        
         camera = new THREE.OrthographicCamera(0, TOTAL_W, 0, TOTAL_H, 1, 1000);
         camera.position.z = 10;
 
@@ -159,24 +157,27 @@
         if (screenID === 'center') offsetX = 2160;
         if (screenID === 'right')  offsetX = 4320;
 
-        // ( fullWidth, fullHeight, x, y, width, height )
         camera.setViewOffset(TOTAL_W, TOTAL_H, offsetX, 0, SCREEN_W, SCREEN_H);
         camera.updateProjectionMatrix();
 
         renderer = new THREE.WebGLRenderer({
             canvas: canvas,
             antialias: false,
-            preserveDrawingBuffer: true, // Needed for trails
+            preserveDrawingBuffer: true, 
             powerPreference: "high-performance"
         });
         
-        // Cap Pixel Ratio at 2 to save GPU on 4K screens
+        // FIX 1 PART B: Set clear color to WHITE so it doesn't default to transparent/black
+        renderer.setClearColor(0xfdfdfd, 1);
+        
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.setSize(window.innerWidth, window.innerHeight); // Fill the local window
+        renderer.setSize(window.innerWidth, window.innerHeight); 
         renderer.autoClear = false;
 
+        // FIX 1 PART C: Force a clear immediately so the first frame is white
+        renderer.clear();
+
         // --- GLOBAL GEOMETRY ---
-        // We calculate points for the FULL 6480px width so the waves flow seamlessly
         const cols = Math.floor(TOTAL_W / DENSITY);
         const rows = Math.floor(TOTAL_H / DENSITY);
         const totalLines = cols * rows;
@@ -198,7 +199,6 @@
         linesMesh = new THREE.LineSegments(geometry, material);
         scene.add(linesMesh);
 
-        // FADE LAYER (Must cover total area to work with the camera offset)
         const fadeGeo = new THREE.PlaneGeometry(TOTAL_W, TOTAL_H);
         fadeGeo.translate(TOTAL_W/2, TOTAL_H/2, 0);
         const fadeMat = new THREE.MeshBasicMaterial({ color: 0xfdfdfd, transparent: true, opacity: 0.2 });
@@ -208,7 +208,6 @@
     function animate() {
         requestAnimationFrame(animate);
         
-        // SYNC TIME: Uses system clock so all screens match instantly
         const now = Date.now();
         const syncTime = now * 0.0003; 
 
@@ -216,12 +215,10 @@
         const total = positions.length / 6;
         let pIndex = 0;
 
-        // ANIMATION LOOP
         for (let k = 0; k < total; k++) {
             const x = posArray[pIndex];
             const y = posArray[pIndex + 1];
 
-            // Wave Math
             const angle = (Math.cos(x * 0.0005 + syncTime) + Math.sin(y * 0.0015 + syncTime)) * Math.PI;
 
             posArray[pIndex + 3] = x + Math.cos(angle) * LENGTH;
@@ -236,14 +233,12 @@
 
     // 3. UI MANAGEMENT
     function setupUI() {
-        // Hide everything first
         document.getElementById('ui-brand').style.display = 'none';
         document.getElementById('ui-city').style.display = 'none';
         document.getElementById('ui-logo').style.display = 'none';
         document.getElementById('timer').style.display = 'none';
         document.getElementById('weather').style.display = 'none';
 
-        // Show only what fits this screen
         if (screenID === 'left') {
             document.getElementById('ui-brand').style.display = 'block';
             document.getElementById('ui-city').style.display = 'block';
@@ -258,10 +253,7 @@
     }
 
     function onWindowResize() {
-        // Update renderer size to fill the local window
         renderer.setSize(window.innerWidth, window.innerHeight);
-        // Note: We do NOT update camera ViewOffset here because 
-        // in installation mode, the resolution is fixed to the hardware (4k).
     }
 
     window.addEventListener('load', () => {
