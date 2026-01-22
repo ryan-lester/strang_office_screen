@@ -11,7 +11,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            background: #fdfdfd; /* Changed from grey to white to match canvas to prevent flash */
+            background: #fdfdfd; 
             width: 100vw;
             height: 100vh;
             overflow: hidden;
@@ -47,8 +47,8 @@
         .corner-text {
             position: absolute;
             font-family: "Roboto Mono", monospace;
-            /* RESIZED: Smaller font to match previous scaled look */
-            font-size: 24px; 
+            /* RESIZED: Smaller per request (was 24px) */
+            font-size: 18px; 
             color: #222222;
             text-transform: uppercase;
             letter-spacing: 2px;
@@ -56,7 +56,7 @@
             display: none; 
         }
 
-        /* RESIZED: Tighter margins (30px instead of 60px) */
+        /* Margins kept tight */
         .top-left { top: 30px; left: 30px; }
         .bottom-left { bottom: 30px; left: 30px; }
         .top-right { top: 30px; right: 30px; text-align: right; }
@@ -73,8 +73,8 @@
         }
 
         .mega-logo {
-            /* RESIZED: Back to original 32% size */
-            width: 32%; 
+            /* RESIZED: Restored to larger size (was 32%) */
+            width: 60%; 
             filter: brightness(0) invert(0);
             mix-blend-mode: difference;
         }
