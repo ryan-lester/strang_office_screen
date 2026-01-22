@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>STRANG Unified Field (Synced)</title>
+    <title>STRANG Unified Field (Optimized)</title>
     <style>
         @import url('https://fonts.cdnfonts.com/css/din-pro');
         @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;500&display=swap');
@@ -18,22 +18,19 @@
             position: relative;
         }
 
-        /* THE RIGID GRID (6480px x 3840px) */
-        .mega-wrapper {
-            width: 6480px; 
-            height: 3840px;
+        /* CONTAINER: Fits the physical screen exactly */
+        .screen-wrapper {
+            width: 100%; 
+            height: 100%;
             position: absolute;
             top: 0;
             left: 0;
             background: #fdfdfd; 
-            transform-origin: 0 0;
         }
 
         /* LAYER 1: WEBGL CANVAS */
         #furCanvas {
-            position: absolute;
-            top: 0;
-            left: 0;
+            display: block;
             width: 100%;
             height: 100%;
             z-index: 10;
@@ -55,11 +52,14 @@
             text-transform: uppercase;
             letter-spacing: 3px;
             font-weight: 500;
+            display: none; /* Hidden by default, revealed by JS */
         }
 
-        /* LEFT SCREEN */
-        .top-left { top: 140px; left: 140px; }
-        .bottom-left { bottom: 140px; left: 140px; }
+        /* Positioning relative to the LOCAL screen */
+        .top-left { top: 60px; left: 60px; }
+        .bottom-left { bottom: 60px; left: 60px; }
+        .top-right { top: 60px; right: 60px; text-align: right; }
+        .bottom-right { bottom: 60px; right: 60px; text-align: right; }
 
         /* CENTER SCREEN */
         .center-logo-container {
@@ -68,31 +68,28 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            display: none; /* Hidden by default */
         }
 
         .mega-logo {
-            width: 32%; 
+            width: 60%; 
             filter: brightness(0) invert(0);
             mix-blend-mode: difference;
         }
-
-        /* RIGHT SCREEN */
-        .top-right { top: 140px; right: 140px; text-align: right; }
-        .bottom-right { bottom: 140px; right: 140px; text-align: right; }
 
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-    <div class="mega-wrapper" id="megaWrapper">
+    <div class="screen-wrapper">
         <canvas id="furCanvas"></canvas>
         
         <div class="ui-layer">
-            <div class="corner-text top-left">STRANG.DESIGN</div>
-            <div class="corner-text bottom-left">MIAMI</div>
+            <div class="corner-text top-left" id="ui-brand">STRANG.DESIGN</div>
+            <div class="corner-text bottom-left" id="ui-city">MIAMI</div>
 
-            <div class="center-logo-container">
+            <div class="center-logo-container" id="ui-logo">
                 <img class="mega-logo" src="assets/strang_logo.png" alt="STRANG">
             </div>
 
@@ -102,7 +99,19 @@
     </div>
 
 <script>
-    // --- 1. DATA LOGIC ---
+    // --- CONFIGURATION ---
+    // The "Virtual" Total Resolution (The Field)
+    const TOTAL_W = 6480;
+    const TOTAL_H = 3840;
+    // The "Physical" Single Screen Resolution
+    const SCREEN_W = 2160;
+    const SCREEN_H = 3840;
+
+    const DENSITY = 30;  
+    const LENGTH = 200;  
+    const COLOR = '#222222';
+
+    // 1. DATA LOGIC (Time & Weather)
     const timerEl = document.getElementById('timer');
     const weatherEl = document.getElementById('weather');
 
@@ -129,43 +138,55 @@
         } catch (e) { weatherEl.innerText = "OFFLINE"; }
     }
 
-    // --- 2. WEBGL LOGIC (SYNCED) ---
-    const DENSITY = 30;  
-    const LENGTH = 200;  
-    const COLOR = '#222222';
-    
-    // Total Canvas Dimensions
-    const width = 6480;
-    const height = 3840;
-
+    // 2. WEBGL LOGIC (OPTIMIZED)
     let scene, camera, renderer, linesMesh, positions, fadeMesh;
+    const urlParams = new URLSearchParams(window.location.search);
+    const screenID = urlParams.get('screen') || 'center'; 
 
     function initWebGL() {
         const canvas = document.getElementById('furCanvas');
         scene = new THREE.Scene();
         scene.background = new THREE.Color(0xfdfdfd);
 
-        camera = new THREE.OrthographicCamera(0, width, 0, height, 1, 1000);
+        // --- OPTIMIZATION: CAMERA OFFSET ---
+        // We create a camera that thinks it sees the whole world (TOTAL_W),
+        // but we force it to only render a specific window (SCREEN_W).
+        
+        camera = new THREE.OrthographicCamera(0, TOTAL_W, 0, TOTAL_H, 1, 1000);
         camera.position.z = 10;
+
+        let offsetX = 0;
+        if (screenID === 'center') offsetX = 2160;
+        if (screenID === 'right')  offsetX = 4320;
+
+        // ( fullWidth, fullHeight, x, y, width, height )
+        camera.setViewOffset(TOTAL_W, TOTAL_H, offsetX, 0, SCREEN_W, SCREEN_H);
+        camera.updateProjectionMatrix();
 
         renderer = new THREE.WebGLRenderer({
             canvas: canvas,
             antialias: false,
-            preserveDrawingBuffer: true
+            preserveDrawingBuffer: true, // Needed for trails
+            powerPreference: "high-performance"
         });
-        renderer.setSize(width, height);
+        
+        // Cap Pixel Ratio at 2 to save GPU on 4K screens
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(window.innerWidth, window.innerHeight); // Fill the local window
         renderer.autoClear = false;
 
-        const cols = Math.floor(width / DENSITY);
-        const rows = Math.floor(height / DENSITY);
+        // --- GLOBAL GEOMETRY ---
+        // We calculate points for the FULL 6480px width so the waves flow seamlessly
+        const cols = Math.floor(TOTAL_W / DENSITY);
+        const rows = Math.floor(TOTAL_H / DENSITY);
         const totalLines = cols * rows;
 
         const geometry = new THREE.BufferGeometry();
         positions = new Float32Array(totalLines * 2 * 3);
 
         let i = 0;
-        for (let x = 0; x < width; x += DENSITY) {
-            for (let y = 0; y < height; y += DENSITY) {
+        for (let x = 0; x < TOTAL_W; x += DENSITY) {
+            for (let y = 0; y < TOTAL_H; y += DENSITY) {
                 positions[i] = x; positions[i+1] = y; positions[i+2] = 0;
                 positions[i+3] = x; positions[i+4] = y; positions[i+5] = 0;
                 i += 6;
@@ -177,9 +198,9 @@
         linesMesh = new THREE.LineSegments(geometry, material);
         scene.add(linesMesh);
 
-        // FADE LAYER
-        const fadeGeo = new THREE.PlaneGeometry(width, height);
-        fadeGeo.translate(width/2, height/2, 0);
+        // FADE LAYER (Must cover total area to work with the camera offset)
+        const fadeGeo = new THREE.PlaneGeometry(TOTAL_W, TOTAL_H);
+        fadeGeo.translate(TOTAL_W/2, TOTAL_H/2, 0);
         const fadeMat = new THREE.MeshBasicMaterial({ color: 0xfdfdfd, transparent: true, opacity: 0.2 });
         fadeMesh = new THREE.Mesh(fadeGeo, fadeMat);
     }
@@ -187,9 +208,7 @@
     function animate() {
         requestAnimationFrame(animate);
         
-        // --- THE SYNC FIX ---
-        // Instead of counting up from 0, we use the actual system time.
-        // All screens will return the exact same number here.
+        // SYNC TIME: Uses system clock so all screens match instantly
         const now = Date.now();
         const syncTime = now * 0.0003; 
 
@@ -197,11 +216,12 @@
         const total = positions.length / 6;
         let pIndex = 0;
 
+        // ANIMATION LOOP
         for (let k = 0; k < total; k++) {
             const x = posArray[pIndex];
             const y = posArray[pIndex + 1];
 
-            // Large, sweeping horizontal waves that span the full 6480px width
+            // Wave Math
             const angle = (Math.cos(x * 0.0005 + syncTime) + Math.sin(y * 0.0015 + syncTime)) * Math.PI;
 
             posArray[pIndex + 3] = x + Math.cos(angle) * LENGTH;
@@ -209,38 +229,49 @@
             pIndex += 6;
         }
         linesMesh.geometry.attributes.position.needsUpdate = true;
+        
         renderer.render(fadeMesh, camera);
         renderer.render(scene, camera);
     }
 
-    // --- 3. SCREEN SETUP ---
-    function setupScreen() {
-        const wrapper = document.getElementById('megaWrapper');
-        const urlParams = new URLSearchParams(window.location.search);
-        const screenID = urlParams.get('screen') || 'center'; 
+    // 3. UI MANAGEMENT
+    function setupUI() {
+        // Hide everything first
+        document.getElementById('ui-brand').style.display = 'none';
+        document.getElementById('ui-city').style.display = 'none';
+        document.getElementById('ui-logo').style.display = 'none';
+        document.getElementById('timer').style.display = 'none';
+        document.getElementById('weather').style.display = 'none';
 
-        let shiftX = 0;
-        if (screenID === 'left')   shiftX = 0;
-        if (screenID === 'center') shiftX = -2160;
-        if (screenID === 'right')  shiftX = -4320;
+        // Show only what fits this screen
+        if (screenID === 'left') {
+            document.getElementById('ui-brand').style.display = 'block';
+            document.getElementById('ui-city').style.display = 'block';
+        }
+        if (screenID === 'center') {
+            document.getElementById('ui-logo').style.display = 'flex';
+        }
+        if (screenID === 'right') {
+            document.getElementById('timer').style.display = 'block';
+            document.getElementById('weather').style.display = 'block';
+        }
+    }
 
-        const windowW = window.innerWidth;
-        const windowH = window.innerHeight;
-        // Target is ONE screen size (2160x3840)
-        const scale = Math.min(windowW / 2160, windowH / 3840);
-        
-        const currentShift = shiftX * scale;
-        wrapper.style.transform = `translate(${currentShift}px, 0px) scale(${scale})`;
+    function onWindowResize() {
+        // Update renderer size to fill the local window
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        // Note: We do NOT update camera ViewOffset here because 
+        // in installation mode, the resolution is fixed to the hardware (4k).
     }
 
     window.addEventListener('load', () => {
-        setupScreen();
+        setupUI();
         updateTime();
         fetchWeather();
         initWebGL();
         animate();
     });
-    window.addEventListener('resize', setupScreen);
+    window.addEventListener('resize', onWindowResize);
 
 </script>
 </body>
