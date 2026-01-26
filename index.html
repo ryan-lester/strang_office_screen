@@ -31,6 +31,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         const screenId = (urlParams.get('screen') || 'center').toLowerCase().trim();
         
+        // UPDATED: Now points to strang_logo.html
         const baseUrl = 'https://ryan-lester.github.io/strang_office_screen/strang_logo.html';
         const targetUrl = `${baseUrl}?screen=${screenId}`;
 
