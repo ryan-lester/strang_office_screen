@@ -3,36 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Timelapse Video Wall</title>
+    <title>Time-Synced Video Wall</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            width: 100%; 
-            height: 100vh; 
-            overflow: hidden;
-            background: #000;
-        }
-
+        body { width: 100%; height: 100vh; overflow: hidden; background: #000; }
+        
         #bg-video {
             position: absolute;
             top: 0;
             height: 100%;
-            
-            /* CRITICAL SETTING:
-               We assume 3 screens, so the video width must be 300% of ONE screen.
-               If you add a 4th screen, change this to 400vw, etc.
-            */
-            width: 300vw; 
-            
+            width: 300vw; /* 3 Screens Wide */
             object-fit: cover;
-            /* Transition for smooth adjustments if needed */
-            transition: transform 0.5s ease; 
+            /* No transition creates a snappier sync */
+        }
+        
+        /* Loading overlay to hide the setup process */
+        #loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; color: #fff; display: flex; 
+            justify-content: center; align-items: center; z-index: 999;
+            font-family: monospace;
         }
     </style>
 </head>
 <body>
 
+    <div id="loader">Syncing with Master Clock...</div>
     <video id="bg-video" muted playsinline></video>
 
     <script>
@@ -45,63 +41,109 @@
             "assets/strang_timelapses_5.mp4"
         ];
 
+        // --- GLOBAL VARS ---
         const videoPlayer = document.getElementById('bg-video');
-        let currentTrack = 0;
+        const loader = document.getElementById('loader');
+        let trackDurations = []; // We will fill this automatically
+        let totalLoopDuration = 0;
 
-        // --- SCREEN POSITION LOGIC ---
-        function setupScreenOffset() {
-            // Get the parameters from the URL (e.g., ?screen=center)
-            const urlParams = new URLSearchParams(window.location.search);
-            const screenPos = urlParams.get('screen');
+        // --- 1. SETUP SCREEN POSITION ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const screenPos = urlParams.get('screen') || 'left';
 
-            // Shift the video based on which screen this is
-            if (screenPos === 'center') {
-                // Move video left by 1 screen width
-                videoPlayer.style.transform = "translateX(-100vw)";
-            } else if (screenPos === 'right') {
-                // Move video left by 2 screen widths
-                videoPlayer.style.transform = "translateX(-200vw)";
-            } else {
-                // Default to 'left' (0 shift)
-                videoPlayer.style.transform = "translateX(0)";
-            }
-            
-            console.log(`Screen configured as: ${screenPos || 'left (default)'}`);
+        if (screenPos === 'center') {
+            videoPlayer.style.transform = "translateX(-100vw)";
+        } else if (screenPos === 'right') {
+            videoPlayer.style.transform = "translateX(-200vw)";
+        } else {
+            videoPlayer.style.transform = "translateX(0)";
         }
 
-        // --- PLAYLIST LOGIC ---
-        function playTrack(index) {
-            if (index >= playlist.length) index = 0;
-            currentTrack = index;
-
-            videoPlayer.src = playlist[currentTrack];
+        // --- 2. PRE-LOADER (GET DURATIONS) ---
+        // We must know exact lengths of videos to build the timeline
+        async function loadDurations() {
+            console.log("Analyzing video lengths...");
             
-            // Attempt to play
-            const playPromise = videoPlayer.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(error => {
-                    console.error("Autoplay failed:", error);
-                    videoPlayer.muted = true; 
-                    videoPlayer.play();
-                });
+            for (let src of playlist) {
+                const duration = await getVideoDuration(src);
+                trackDurations.push(duration);
+                totalLoopDuration += duration;
+            }
+            
+            console.log(`Total Loop Time: ${totalLoopDuration}s`);
+            loader.style.display = 'none'; // Hide loader
+            startSyncLoop(); // Start the engine
+        }
+
+        // Helper to fetch duration of a video file
+        function getVideoDuration(src) {
+            return new Promise((resolve) => {
+                const tempVideo = document.createElement('video');
+                tempVideo.preload = 'metadata';
+                tempVideo.src = src;
+                tempVideo.onloadedmetadata = () => resolve(tempVideo.duration);
+                // Fallback for errors: assume 10s if file breaks
+                tempVideo.onerror = () => resolve(10); 
+            });
+        }
+
+        // --- 3. THE MASTER CLOCK SYNC ---
+        function startSyncLoop() {
+            // Check sync every 100ms (10 times a second)
+            setInterval(syncVideoToClock, 100);
+        }
+
+        function syncVideoToClock() {
+            // A. Get Global Time (seconds)
+            const now = Date.now() / 1000;
+
+            // B. Find where we are in the "Grand Loop"
+            // The modulo (%) operator makes this loop forever based on Total Duration
+            let timeInLoop = now % totalLoopDuration;
+
+            // C. Figure out WHICH video should be playing at this specific second
+            let activeTrackIndex = 0;
+            let activeTrackStartTime = 0;
+
+            for (let i = 0; i < trackDurations.length; i++) {
+                // If "timeInLoop" is past this video, subtract duration and check next
+                if (timeInLoop > trackDurations[i]) {
+                    timeInLoop -= trackDurations[i];
+                } else {
+                    // Found it! We are inside this video
+                    activeTrackIndex = i;
+                    activeTrackStartTime = timeInLoop;
+                    break;
+                }
+            }
+
+            // D. Apply to Player
+            const currentSrc = playlist[activeTrackIndex];
+            
+            // 1. If wrong video is loaded, switch it
+            if (!videoPlayer.src.includes(currentSrc)) {
+                console.log(`Switching to ${currentSrc}`);
+                videoPlayer.src = currentSrc;
+                videoPlayer.play().catch(e => console.log("Autoplay block:", e));
+            }
+
+            // 2. Drift Correction
+            // If the video player time is off by more than 0.3 seconds from the Clock, force a seek
+            // This ensures all screens snap back to grid if they drift
+            const timeDiff = Math.abs(videoPlayer.currentTime - activeTrackStartTime);
+            if (timeDiff > 0.3) {
+                console.log("Drift detected. Resyncing...");
+                videoPlayer.currentTime = activeTrackStartTime;
+            }
+            
+            // Ensure it's playing
+            if (videoPlayer.paused) {
+                videoPlayer.play().catch(e => {}); 
             }
         }
 
-        // --- EVENT LISTENERS ---
-        videoPlayer.addEventListener('ended', () => {
-            playTrack(currentTrack + 1);
-        });
-
-        videoPlayer.addEventListener('error', () => {
-            console.error(`Error loading ${playlist[currentTrack]}, skipping...`);
-            setTimeout(() => { playTrack(currentTrack + 1); }, 1000);
-        });
-
-        // --- INITIALIZATION ---
-        window.addEventListener('load', () => {
-            setupScreenOffset(); // <--- Run the positioning logic
-            playTrack(0);        // <--- Start the video
-        });
+        // --- START ---
+        window.addEventListener('load', loadDurations);
 
     </script>
 </body>
