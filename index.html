@@ -29,7 +29,8 @@
             width: 100%;
             height: 100%;
             border: none;
-            transition: transform 1.5s cubic-bezier(0.77, 0, 0.175, 1); /* Fly Up Ease */
+            /* Default transition for the "Fly Up" movement */
+            transition: transform 1.5s cubic-bezier(0.77, 0, 0.175, 1); 
             will-change: transform;
         }
 
@@ -85,43 +86,28 @@
         const urlParams = new URLSearchParams(window.location.search);
         const screenID = (urlParams.get('screen') || 'center').toLowerCase().trim();
         
-        // DURATION: 2 Minutes (120,000 ms)
-        // Every 2 minutes on the system clock, the slides will change.
+        // 2 Minutes per slide
         const ROTATION_SPEED = 120000; 
 
         // --- 2. PLAYLIST ---
         const PLAYLIST = [
-            { 
-                file: 'strang_logo.html', 
-                uiColor: 'black' 
-            },
-            { 
-                file: 'strang_photo.html', 
-                uiColor: 'white' 
-            }
+            { file: 'strang_logo.html', uiColor: 'black' },
+            { file: 'strang_photo.html', uiColor: 'white' }
         ];
 
-        let currentIndex = -1; // Start invalid to force initial load
+        let currentIndex = -1; 
         let activeFrameId = 'frame-a';
 
-        // --- 3. SYNC LOGIC (The Brains) ---
+        // --- 3. SYNC LOGIC ---
         function checkSync() {
-            // Get absolute world time in milliseconds
             const now = Date.now();
-            
-            // Calculate how many "2-minute blocks" have passed since 1970
             const timeBlock = Math.floor(now / ROTATION_SPEED);
-            
-            // Modulo finds our place in the playlist (0, 1, 0, 1...)
             const targetIndex = timeBlock % PLAYLIST.length;
 
-            // If the time says we should be on a different slide than we are...
             if (targetIndex !== currentIndex) {
                 if (currentIndex === -1) {
-                    // First Load: Just appear instantly, no animation
                     jumpToSlide(targetIndex);
                 } else {
-                    // Update: Fly Up Animation
                     transitionToSlide(targetIndex);
                 }
             }
@@ -132,34 +118,39 @@
         function jumpToSlide(index) {
             const content = PLAYLIST[index];
             const frame = document.getElementById(activeFrameId);
-            
             frame.src = content.file;
             document.getElementById('ui-container').className = `ui-layer text-${content.uiColor}`;
-            
             currentIndex = index;
         }
 
         function transitionToSlide(index) {
             const nextContent = PLAYLIST[index];
-
-            // Identify frames
             const currentFrame = document.getElementById(activeFrameId);
             const nextFrameId = activeFrameId === 'frame-a' ? 'frame-b' : 'frame-a';
             const nextFrame = document.getElementById(nextFrameId);
 
-            // 1. Prepare Next Frame below
+            // --- THE FIX: INSTANT TELEPORT ---
+            // 1. Disable animation temporarily
+            nextFrame.style.transition = 'none';
+            
+            // 2. Snap next frame to the BOTTOM instantly
             nextFrame.className = 'slide-frame pos-bottom';
+            
+            // 3. Force browser to recognize the snap (Reflow)
+            void nextFrame.offsetWidth;
+
+            // 4. Load content
             nextFrame.src = nextContent.file;
 
-            // 2. Animate after brief delay for loading
+            // 5. Re-enable animation & Fly Up
             setTimeout(() => {
-                currentFrame.className = 'slide-frame pos-top'; // Fly Up
-                nextFrame.className = 'slide-frame pos-center'; // Fly In
+                nextFrame.style.transition = ''; // Turn animation back on
                 
-                // Update UI Color
+                currentFrame.className = 'slide-frame pos-top';   // Fly Up (Exit)
+                nextFrame.className = 'slide-frame pos-center';   // Fly Up (Enter)
+                
                 document.getElementById('ui-container').className = `ui-layer text-${nextContent.uiColor}`;
-
-                // Update State
+                
                 activeFrameId = nextFrameId;
                 currentIndex = index;
             }, 500); 
@@ -191,8 +182,7 @@
             }).format(now);
             document.getElementById('timer').innerText = estTime + ":" + Math.floor(now.getMilliseconds()/100);
             
-            // Run the sync check constantly
-            checkSync();
+            checkSync(); // Check schedule every frame
             
             requestAnimationFrame(updateTime);
         }
@@ -207,11 +197,10 @@
             } catch (e) {}
         }
 
-        // --- INIT ---
         window.addEventListener('load', () => {
             updateLayout();
             setupUI();
-            updateTime(); // This starts the sync loop
+            updateTime();
             fetchWeather();
         });
         window.addEventListener('resize', updateLayout);
