@@ -8,35 +8,27 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            /* FIX: Use 100% of the iframe, not 300vw. 
-               The iframe is already 3 screens wide. */
+            /* Full width of the iframe (which is already 3 screens wide) */
             width: 100%; 
             height: 100vh;
             overflow: hidden;
-            
-            /* White Background for Black Logo */
             background: #ffffff; 
 
-            /* Center the content */
+            /* Center the massive logo */
             display: flex;
             justify-content: center;
             align-items: center;
         }
 
         #my-logo {
-            /* This is relative to the total width (3 screens). 
-               20% of 3 screens = 60% of one screen. */
-            width: 20%; 
+            /* SIZE CONTROLS:
+               33% = Fills the Center Screen (edge to edge)
+               60% = Spans ~2 Screens (bleeds onto Left and Right)
+               90% = Spans almost all 3 Screens
+            */
+            width: 60%; 
             height: auto;
             display: block;
-            
-            /* DEBUG BORDER: 
-               This puts a red box around where the image SHOULD be.
-               If you see the red box but no logo -> Image path is wrong.
-               If you see no red box -> CSS positioning is still off.
-               REMOVE THIS LINE ONCE IT WORKS. 
-            */
-            border: 2px solid red; 
         }
     </style>
 </head>
