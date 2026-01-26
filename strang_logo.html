@@ -11,7 +11,8 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            background: #fdfdfd; 
+            /* UPDATED: Deep Black Background */
+            background: #000000; 
             width: 100vw;
             height: 100vh;
             overflow: hidden;
@@ -19,7 +20,6 @@
         }
 
         /* --- THE VIRTUAL WORLD (6480x3840) --- */
-        /* This container acts as if all 3 screens are one giant canvas. */
         #virtual-canvas {
             position: absolute;
             top: 0;
@@ -27,27 +27,23 @@
             width: 6480px;  /* 3 * 2160 */
             height: 3840px; /* Native Height */
             
-            /* Flexbox centers the logo perfectly in the middle of the 3-screen array */
             display: flex;
             justify-content: center;
             align-items: center;
 
-            /* Smooth movement if you ever animate it, though static for now */
             transition: transform 0s; 
         }
 
         /* THE LOGO */
         #mega-logo {
-            /* Adjust Width: 
-               100% = Logo touches far left of Screen 1 and far right of Screen 3 
-               33%  = Logo fits almost entirely inside Screen 2 
-            */
             width: 60%; 
             height: auto;
             display: block;
+            /* OPTIONAL: If your PNG is actually black, uncomment the line below to turn it white: */
+            /* filter: invert(1); */
         }
 
-        /* --- UI LAYER (Kept from your original code) --- */
+        /* --- UI LAYER --- */
         .ui-layer {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -59,11 +55,14 @@
             position: absolute;
             font-family: "Roboto Mono", monospace;
             font-size: 18px; 
-            color: #222222;
+            
+            /* UPDATED: White text for visibility on black */
+            color: #ffffff;
+            
             text-transform: uppercase;
             letter-spacing: 2px;
             font-weight: 500;
-            display: none; /* Hidden by default, toggled by JS */
+            display: none; 
         }
 
         .top-left { top: 30px; left: 30px; }
@@ -88,7 +87,6 @@
 
 <script>
     // --- CONFIGURATION ---
-    // NATIVE RESOLUTION of one screen
     const SCREEN_WIDTH = 2160; 
 
     // 1. POSITIONING LOGIC
@@ -97,7 +95,6 @@
     const canvas = document.getElementById('virtual-canvas');
 
     function updateScreenOffset() {
-        // We shift the entire 6480px canvas to the left based on which screen we are
         let offsetX = 0;
 
         if (screenID === 'left')   offsetX = 0;
@@ -107,35 +104,30 @@
         canvas.style.transform = `translateX(${offsetX}px)`;
     }
 
-    // 2. UI LOGIC (Toggle visibility based on screen)
+    // 2. UI LOGIC 
     function setupUI() {
         const brand = document.getElementById('ui-brand');
         const city = document.getElementById('ui-city');
         const timer = document.getElementById('timer');
         const weather = document.getElementById('weather');
 
-        // Reset
         brand.style.display = 'none';
         city.style.display = 'none';
         timer.style.display = 'none';
         weather.style.display = 'none';
 
-        // Left Screen gets Left UI
         if (screenID === 'left') {
             brand.style.display = 'block';
             city.style.display = 'block';
         }
         
-        // Right Screen gets Right UI
         if (screenID === 'right') {
             timer.style.display = 'block';
             weather.style.display = 'block';
         }
-
-        // Center gets nothing (clean view of the logo center)
     }
 
-    // 3. DATA FEEDS (Time & Weather)
+    // 3. DATA FEEDS
     function updateTime() {
         const now = new Date();
         const estTime = new Intl.DateTimeFormat('en-US', {
@@ -166,7 +158,6 @@
         fetchWeather();
     });
 
-    // Optional: Handle window resize if testing on desktop (not needed for production signage)
     window.addEventListener('resize', updateScreenOffset);
 
 </script>
