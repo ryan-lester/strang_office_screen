@@ -20,20 +20,17 @@
             left: 0;
             width: 100%;
             height: 100%;
-            object-fit: cover; /* Ensures full screen fill */
+            object-fit: cover; 
             display: block;
         }
     </style>
 </head>
 <body>
 
-    <video id="bg-video" autoplay muted playsinline>
-        <source src="assets/strang_timelapses_1.mp4" type="video/mp4">
-    </video>
+    <video id="bg-video" muted playsinline></video>
 
     <script>
         // --- CONFIGURATION ---
-        // List your files exactly as they are named in the assets folder
         const playlist = [
             "assets/strang_timelapses_1.mp4",
             "assets/strang_timelapses_2.mp4",
@@ -42,32 +39,54 @@
             "assets/strang_timelapses_5.mp4"
         ];
 
-        // --- LOGIC ---
         const videoPlayer = document.getElementById('bg-video');
         let currentTrack = 0;
 
-        // Listen for when the video ends
-        videoPlayer.addEventListener('ended', () => {
-            // Move to the next track index
-            currentTrack++;
+        // --- FUNCTIONS ---
 
-            // If we've reached the end of the list, loop back to start (0)
-            if (currentTrack >= playlist.length) {
-                currentTrack = 0;
-            }
+        function playTrack(index) {
+            // Ensure index is valid
+            if (index >= playlist.length) index = 0;
+            currentTrack = index;
 
-            // Load and Play the next file
+            // Log for debugging
+            console.log(`Loading video: ${playlist[currentTrack]}`);
+
             videoPlayer.src = playlist[currentTrack];
-            videoPlayer.play();
+            
+            // Promise-based play to catch Autoplay errors
+            const playPromise = videoPlayer.play();
+            
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.error("Autoplay failed:", error);
+                    // Force mute and try again (Browser policy fix)
+                    videoPlayer.muted = true; 
+                    videoPlayer.play();
+                });
+            }
+        }
+
+        // --- EVENT LISTENERS ---
+
+        // 1. Loop when finished
+        videoPlayer.addEventListener('ended', () => {
+            console.log("Video ended, next track...");
+            playTrack(currentTrack + 1);
         });
         
-        // Error handling: If a video fails (e.g., file 3 is missing), skip to next
-        videoPlayer.addEventListener('error', () => {
-            console.log(`Error loading ${playlist[currentTrack]}, skipping...`);
-            currentTrack++;
-            if (currentTrack >= playlist.length) currentTrack = 0;
-            videoPlayer.src = playlist[currentTrack];
-            videoPlayer.play();
+        // 2. Skip if file is missing/broken
+        videoPlayer.addEventListener('error', (e) => {
+            console.error(`Error loading ${playlist[currentTrack]}`, e);
+            // Wait 1 second before skipping to prevent rapid-fire looping on total failure
+            setTimeout(() => {
+                playTrack(currentTrack + 1);
+            }, 1000);
+        });
+
+        // --- INIT ---
+        window.addEventListener('load', () => {
+            playTrack(0); // Start the first video immediately
         });
 
     </script>
