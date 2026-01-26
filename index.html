@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Timelapse Sequence</title>
+    <title>Timelapse Video Wall</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -17,23 +17,26 @@
         #bg-video {
             position: absolute;
             top: 0;
-            left: 0;
-            width: 100%;
             height: 100%;
-            object-fit: cover; /* Ensures full screen fill */
-            display: block;
+            
+            /* CRITICAL SETTING:
+               We assume 3 screens, so the video width must be 300% of ONE screen.
+               If you add a 4th screen, change this to 400vw, etc.
+            */
+            width: 300vw; 
+            
+            object-fit: cover;
+            /* Transition for smooth adjustments if needed */
+            transition: transform 0.5s ease; 
         }
     </style>
 </head>
 <body>
 
-    <video id="bg-video" autoplay muted playsinline>
-        <source src="assets/strang_timelapses_1.mp4" type="video/mp4">
-    </video>
+    <video id="bg-video" muted playsinline></video>
 
     <script>
         // --- CONFIGURATION ---
-        // List your files exactly as they are named in the assets folder
         const playlist = [
             "assets/strang_timelapses_1.mp4",
             "assets/strang_timelapses_2.mp4",
@@ -42,32 +45,62 @@
             "assets/strang_timelapses_5.mp4"
         ];
 
-        // --- LOGIC ---
         const videoPlayer = document.getElementById('bg-video');
         let currentTrack = 0;
 
-        // Listen for when the video ends
-        videoPlayer.addEventListener('ended', () => {
-            // Move to the next track index
-            currentTrack++;
+        // --- SCREEN POSITION LOGIC ---
+        function setupScreenOffset() {
+            // Get the parameters from the URL (e.g., ?screen=center)
+            const urlParams = new URLSearchParams(window.location.search);
+            const screenPos = urlParams.get('screen');
 
-            // If we've reached the end of the list, loop back to start (0)
-            if (currentTrack >= playlist.length) {
-                currentTrack = 0;
+            // Shift the video based on which screen this is
+            if (screenPos === 'center') {
+                // Move video left by 1 screen width
+                videoPlayer.style.transform = "translateX(-100vw)";
+            } else if (screenPos === 'right') {
+                // Move video left by 2 screen widths
+                videoPlayer.style.transform = "translateX(-200vw)";
+            } else {
+                // Default to 'left' (0 shift)
+                videoPlayer.style.transform = "translateX(0)";
             }
+            
+            console.log(`Screen configured as: ${screenPos || 'left (default)'}`);
+        }
 
-            // Load and Play the next file
+        // --- PLAYLIST LOGIC ---
+        function playTrack(index) {
+            if (index >= playlist.length) index = 0;
+            currentTrack = index;
+
             videoPlayer.src = playlist[currentTrack];
-            videoPlayer.play();
+            
+            // Attempt to play
+            const playPromise = videoPlayer.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.error("Autoplay failed:", error);
+                    videoPlayer.muted = true; 
+                    videoPlayer.play();
+                });
+            }
+        }
+
+        // --- EVENT LISTENERS ---
+        videoPlayer.addEventListener('ended', () => {
+            playTrack(currentTrack + 1);
         });
-        
-        // Error handling: If a video fails (e.g., file 3 is missing), skip to next
+
         videoPlayer.addEventListener('error', () => {
-            console.log(`Error loading ${playlist[currentTrack]}, skipping...`);
-            currentTrack++;
-            if (currentTrack >= playlist.length) currentTrack = 0;
-            videoPlayer.src = playlist[currentTrack];
-            videoPlayer.play();
+            console.error(`Error loading ${playlist[currentTrack]}, skipping...`);
+            setTimeout(() => { playTrack(currentTrack + 1); }, 1000);
+        });
+
+        // --- INITIALIZATION ---
+        window.addEventListener('load', () => {
+            setupScreenOffset(); // <--- Run the positioning logic
+            playTrack(0);        // <--- Start the video
         });
 
     </script>
