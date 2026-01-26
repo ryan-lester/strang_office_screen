@@ -91,8 +91,18 @@
 
         // --- 2. PLAYLIST ---
         const PLAYLIST = [
-            { file: 'strang_logo.html', uiColor: 'black' },
-            { file: 'strang_photo.html', uiColor: 'white' }
+            { 
+                file: 'strang_logo.html', 
+                uiColor: 'black' 
+            },
+            { 
+                file: 'strang_photo.html', 
+                uiColor: 'white' 
+            },
+            { 
+                file: 'strang_timelapses.html', 
+                uiColor: 'white' // Videos usually need white text
+            }
         ];
 
         let currentIndex = -1; 
@@ -129,25 +139,20 @@
             const nextFrameId = activeFrameId === 'frame-a' ? 'frame-b' : 'frame-a';
             const nextFrame = document.getElementById(nextFrameId);
 
-            // --- THE FIX: INSTANT TELEPORT ---
-            // 1. Disable animation temporarily
+            // INSTANT TELEPORT (Fixes "Elevator Effect")
             nextFrame.style.transition = 'none';
-            
-            // 2. Snap next frame to the BOTTOM instantly
             nextFrame.className = 'slide-frame pos-bottom';
-            
-            // 3. Force browser to recognize the snap (Reflow)
-            void nextFrame.offsetWidth;
+            void nextFrame.offsetWidth; // Force Reflow
 
-            // 4. Load content
+            // Load content
             nextFrame.src = nextContent.file;
 
-            // 5. Re-enable animation & Fly Up
+            // Animate
             setTimeout(() => {
-                nextFrame.style.transition = ''; // Turn animation back on
+                nextFrame.style.transition = ''; // Restore animation
                 
-                currentFrame.className = 'slide-frame pos-top';   // Fly Up (Exit)
-                nextFrame.className = 'slide-frame pos-center';   // Fly Up (Enter)
+                currentFrame.className = 'slide-frame pos-top';
+                nextFrame.className = 'slide-frame pos-center';
                 
                 document.getElementById('ui-container').className = `ui-layer text-${nextContent.uiColor}`;
                 
@@ -182,7 +187,7 @@
             }).format(now);
             document.getElementById('timer').innerText = estTime + ":" + Math.floor(now.getMilliseconds()/100);
             
-            checkSync(); // Check schedule every frame
+            checkSync(); 
             
             requestAnimationFrame(updateTime);
         }
