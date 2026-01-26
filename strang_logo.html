@@ -3,30 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Graphic Wallpaper</title>
+    <title>Strang Logo Wallpaper</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            /* 1. Define the Canvas Size */
-            width: 300vw; /* 3 Screens Wide */
+            /* 3 SCREENS WIDE */
+            width: 300vw; 
             height: 100vh;
             overflow: hidden;
-            background: #000; /* Black Background */
+            
+            /* WHITE BACKGROUND for Black Logo */
+            background: #ffffff; 
 
-            /* 2. Center Your Content */
             display: flex;
             justify-content: center;
             align-items: center;
         }
 
-        /* 3. Style Your Art */
         #my-logo {
-            width: 20%; /* Relative to total width. 20% of 3 screens = 60% of one screen */
+            /* 20% of 3 screens = 60% of one screen width */
+            width: 20%; 
             height: auto;
-            
-            /* If your logo is black, invert it to white automatically */
-            /* filter: invert(1); */ 
+            display: block;
         }
     </style>
 </head>
