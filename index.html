@@ -3,48 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Strang OS Controller</title>
+    <title>Strang OS Controller v2</title>
     <style>
-        /* IMPORT DIN PRO */
         @import url('https://fonts.cdnfonts.com/css/din-pro');
 
         body, html { 
             margin: 0; padding: 0; 
             width: 100%; height: 100%; 
             overflow: hidden; 
-            background-color: #ffffff; /* White Base */
+            background-color: #000; 
         }
 
-        /* THE VIEWPORT (3 Screens Wide) */
-        #content-frame {
+        /* --- STAGE CONTAINER --- */
+        #stage {
             position: absolute;
-            top: 0;
-            width: 300vw; 
+            top: 0; left: 0;
+            width: 300vw; /* 3 Screens Wide */
             height: 100vh;
-            border: none;
-            overflow: hidden;
-            transition: left 0s; 
+            /* Transition Logic handled by JS classes */
         }
 
-        /* UI OVERLAY */
+        /* --- THE SLIDES (Double Buffering) --- */
+        .slide-frame {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            transition: transform 1.5s cubic-bezier(0.77, 0, 0.175, 1); /* "Fly Up" Easing */
+            will-change: transform;
+        }
+
+        /* POSITIONS */
+        .pos-center { transform: translateY(0); z-index: 10; }
+        .pos-bottom { transform: translateY(100vh); z-index: 5; } /* Waiting below */
+        .pos-top    { transform: translateY(-100vh); z-index: 5; } /* Gone above */
+
+        /* --- UI LAYER --- */
         .ui-layer {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             z-index: 999;
             pointer-events: none;
+            transition: color 1s ease; /* Smooth color fade */
         }
+
+        /* DYNAMIC COLOR CLASSES */
+        .text-white .corner-text { color: #ffffff; }
+        .text-black .corner-text { color: #000000; }
 
         .corner-text {
             position: absolute;
-            
-            /* CORRECTED FONT STACK */
             font-family: 'DIN Pro', sans-serif;
-            font-weight: 500; /* Bold/Medium looks best in DIN */
+            font-weight: 500;
             font-size: 18px; 
-            
-            /* Black Text for White Background */
-            color: #000000; 
-            
             text-transform: uppercase;
             letter-spacing: 2px;
             display: none; 
@@ -58,9 +70,12 @@
 </head>
 <body>
 
-    <iframe id="content-frame"></iframe>
+    <div id="stage">
+        <iframe id="frame-a" class="slide-frame pos-center"></iframe>
+        <iframe id="frame-b" class="slide-frame pos-bottom"></iframe>
+    </div>
 
-    <div class="ui-layer">
+    <div id="ui-container" class="ui-layer text-black">
         <div class="corner-text top-left" id="ui-brand">STRANG.DESIGN</div>
         <div class="corner-text bottom-left" id="ui-city">MIAMI</div>
         <div class="corner-text top-right" id="timer">00:00:00</div>
@@ -68,23 +83,72 @@
     </div>
 
     <script>
-        // --- LOGIC ---
+        // --- 1. CONFIGURATION ---
         const urlParams = new URLSearchParams(window.location.search);
         const screenID = (urlParams.get('screen') || 'center').toLowerCase().trim();
-        const fileToLoad = urlParams.get('file') || 'strang_logo.html'; 
         
-        // 1. LOAD CONTENT
-        const iframe = document.getElementById('content-frame');
-        iframe.src = fileToLoad;
+        // DURATION: 2 Minutes in milliseconds
+        const ROTATION_SPEED = 120000; 
 
-        function updateLayout() {
-            // Shift the 300vw iframe to the correct "window"
-            if (screenID === 'left')   iframe.style.left = '0vw';
-            if (screenID === 'center') iframe.style.left = '-100vw'; 
-            if (screenID === 'right')  iframe.style.left = '-200vw'; 
+        // --- 2. THE PLAYLIST ---
+        const PLAYLIST = [
+            { 
+                file: 'strang_logo.html', 
+                uiColor: 'black' // Logo has white bg, so text needs to be black
+            },
+            { 
+                file: 'strang_photo.html', 
+                uiColor: 'white' // Photo is likely dark, so text needs to be white
+            }
+        ];
+
+        let currentIndex = 0;
+        let activeFrameId = 'frame-a'; // Tracks which iframe is currently visible
+
+        // --- 3. TRANSITION LOGIC ---
+        function loadNextSlide() {
+            // Calculate next index
+            const nextIndex = (currentIndex + 1) % PLAYLIST.length;
+            const nextContent = PLAYLIST[nextIndex];
+
+            // Identify frames
+            const currentFrame = document.getElementById(activeFrameId);
+            const nextFrameId = activeFrameId === 'frame-a' ? 'frame-b' : 'frame-a';
+            const nextFrame = document.getElementById(nextFrameId);
+
+            // 1. Prepare Next Frame (put it at bottom, load content)
+            nextFrame.className = 'slide-frame pos-bottom';
+            nextFrame.src = nextContent.file;
+
+            // Wait a moment for iframe to load, then animate
+            // (In a production env, use onload, but timeout is smoother here)
+            setTimeout(() => {
+                // 2. Animate!
+                // Current goes UP (out of view)
+                currentFrame.className = 'slide-frame pos-top';
+                // Next goes UP (into view)
+                nextFrame.className = 'slide-frame pos-center';
+
+                // 3. Update UI Color
+                const ui = document.getElementById('ui-container');
+                ui.className = `ui-layer text-${nextContent.uiColor}`;
+
+                // 4. Update State
+                activeFrameId = nextFrameId;
+                currentIndex = nextIndex;
+
+            }, 500); // Small buffer to ensure content is ready
         }
 
-        // 2. TOGGLE UI
+        // --- 4. SCREEN LAYOUT ---
+        const stage = document.getElementById('stage');
+        function updateLayout() {
+            if (screenID === 'left')   stage.style.left = '0vw';
+            if (screenID === 'center') stage.style.left = '-100vw'; 
+            if (screenID === 'right')  stage.style.left = '-200vw'; 
+        }
+
+        // --- 5. UI TOGGLES ---
         function setupUI() {
             const brand = document.getElementById('ui-brand');
             const city = document.getElementById('ui-city');
@@ -101,7 +165,7 @@
             }
         }
 
-        // 3. DIN PRO CLOCK & WEATHER
+        // --- 6. DATA FEEDS ---
         function updateTime() {
             const now = new Date();
             const estTime = new Intl.DateTimeFormat('en-US', {
@@ -122,13 +186,24 @@
             } catch (e) {}
         }
 
+        // --- INIT ---
         window.addEventListener('load', () => {
             updateLayout();
             setupUI();
             updateTime();
             fetchWeather();
+
+            // Load Initial Content
+            const startContent = PLAYLIST[0];
+            const firstFrame = document.getElementById('frame-a');
+            firstFrame.src = startContent.file;
+            document.getElementById('ui-container').className = `ui-layer text-${startContent.uiColor}`;
+
+            // Start Rotation
+            setInterval(loadNextSlide, ROTATION_SPEED);
         });
         window.addEventListener('resize', updateLayout);
+
     </script>
 </body>
 </html>
