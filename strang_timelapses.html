@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Timelapse Sequence</title>
+    <title>Seamless Timelapse Sequence</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -14,20 +14,26 @@
             background: #000;
         }
 
-        #bg-video {
+        /* Common style for both players */
+        .bg-video {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             object-fit: cover; 
-            display: block;
+            transition: opacity 1s ease-in-out; /* The Cross-fade magic */
         }
+
+        /* Utility classes to hide/show players */
+        .visible { opacity: 1; z-index: 2; }
+        .hidden { opacity: 0; z-index: 1; }
     </style>
 </head>
 <body>
 
-    <video id="bg-video" muted playsinline></video>
+    <video id="player1" class="bg-video visible" muted playsinline></video>
+    <video id="player2" class="bg-video hidden" muted playsinline></video>
 
     <script>
         // --- CONFIGURATION ---
@@ -39,55 +45,77 @@
             "assets/strang_timelapses_5.mp4"
         ];
 
-        const videoPlayer = document.getElementById('bg-video');
-        let currentTrack = 0;
+        // --- STATE MANAGEMENT ---
+        const player1 = document.getElementById('player1');
+        const player2 = document.getElementById('player2');
+        
+        // We track which player is currently "Active" (visible)
+        let activePlayer = player1;
+        let nextPlayer = player2;
+        let currentTrackIndex = 0;
 
-        // --- FUNCTIONS ---
+        // --- LOGIC ---
 
-        function playTrack(index) {
-            // Ensure index is valid
-            if (index >= playlist.length) index = 0;
-            currentTrack = index;
+        function init() {
+            // 1. Start the first track on the active player
+            activePlayer.src = playlist[currentTrackIndex];
+            activePlayer.play().catch(e => console.error("Autoplay blocked", e));
 
-            // Log for debugging
-            console.log(`Loading video: ${playlist[currentTrack]}`);
+            // 2. Pre-load the second track on the hidden player
+            prepareNextTrack();
 
-            videoPlayer.src = playlist[currentTrack];
-            
-            // Promise-based play to catch Autoplay errors
-            const playPromise = videoPlayer.play();
-            
-            if (playPromise !== undefined) {
-                playPromise.catch(error => {
-                    console.error("Autoplay failed:", error);
-                    // Force mute and try again (Browser policy fix)
-                    videoPlayer.muted = true; 
-                    videoPlayer.play();
-                });
-            }
+            // 3. Setup event listeners for BOTH players
+            // When whichever player is active ends, swap to the other one
+            player1.addEventListener('ended', swapPlayers);
+            player2.addEventListener('ended', swapPlayers);
         }
 
-        // --- EVENT LISTENERS ---
+        function prepareNextTrack() {
+            // Calculate next index
+            let nextIndex = currentTrackIndex + 1;
+            if (nextIndex >= playlist.length) nextIndex = 0;
 
-        // 1. Loop when finished
-        videoPlayer.addEventListener('ended', () => {
-            console.log("Video ended, next track...");
-            playTrack(currentTrack + 1);
-        });
-        
-        // 2. Skip if file is missing/broken
-        videoPlayer.addEventListener('error', (e) => {
-            console.error(`Error loading ${playlist[currentTrack]}`, e);
-            // Wait 1 second before skipping to prevent rapid-fire looping on total failure
-            setTimeout(() => {
-                playTrack(currentTrack + 1);
-            }, 1000);
-        });
+            // Load it into the hidden player so it's ready to go
+            nextPlayer.src = playlist[nextIndex];
+            nextPlayer.load(); // Force browser to buffer it
+        }
 
-        // --- INIT ---
-        window.addEventListener('load', () => {
-            playTrack(0); // Start the first video immediately
-        });
+        function swapPlayers() {
+            console.log("Track finished. Swapping players...");
+
+            // 1. The 'nextPlayer' (hidden) is already loaded. Play it!
+            nextPlayer.play().then(() => {
+                
+                // 2. VISUAL SWAP: Fade next in, fade active out
+                nextPlayer.classList.remove('hidden');
+                nextPlayer.classList.add('visible');
+                
+                activePlayer.classList.remove('visible');
+                activePlayer.classList.add('hidden');
+
+                // 3. Update our State Tracking
+                // (Old active becomes next, Old next becomes active)
+                const temp = activePlayer;
+                activePlayer = nextPlayer;
+                nextPlayer = temp;
+
+                // 4. Update Index
+                currentTrackIndex++;
+                if (currentTrackIndex >= playlist.length) currentTrackIndex = 0;
+
+                // 5. Prepare the player that just finished for the NEXT round
+                // We wait a moment for the fade to finish before changing its source
+                setTimeout(() => {
+                    prepareNextTrack();
+                }, 1000); // Matches CSS transition time
+
+            }).catch(e => {
+                console.error("Play failed during swap", e);
+            });
+        }
+
+        // --- START ---
+        window.addEventListener('load', init);
 
     </script>
 </body>
