@@ -101,7 +101,7 @@
             },
             { 
                 file: 'strang_timelapses.html', 
-                uiColor: 'white' // Videos usually need white text
+                uiColor: 'white' 
             }
         ];
 
@@ -139,26 +139,28 @@
             const nextFrameId = activeFrameId === 'frame-a' ? 'frame-b' : 'frame-a';
             const nextFrame = document.getElementById(nextFrameId);
 
-            // INSTANT TELEPORT (Fixes "Elevator Effect")
+            // 1. INSTANT TELEPORT (Fixes "Elevator Effect")
+            // Instantly moves the hidden frame to the bottom without animating
             nextFrame.style.transition = 'none';
             nextFrame.className = 'slide-frame pos-bottom';
-            void nextFrame.offsetWidth; // Force Reflow
+            void nextFrame.offsetWidth; // Force Reflow (Browser Magic)
 
-            // Load content
+            // 2. Load content
             nextFrame.src = nextContent.file;
 
-            // Animate
+            // 3. WAIT FOR LOAD (The Fix)
+            // Wait 1000ms (1 second) to let video buffer before flying up
             setTimeout(() => {
                 nextFrame.style.transition = ''; // Restore animation
                 
-                currentFrame.className = 'slide-frame pos-top';
-                nextFrame.className = 'slide-frame pos-center';
+                currentFrame.className = 'slide-frame pos-top';   // Fly Up (Exit)
+                nextFrame.className = 'slide-frame pos-center';   // Fly Up (Enter)
                 
                 document.getElementById('ui-container').className = `ui-layer text-${nextContent.uiColor}`;
                 
                 activeFrameId = nextFrameId;
                 currentIndex = index;
-            }, 500); 
+            }, 1000); 
         }
 
         // --- 5. STANDARD SETUP ---
