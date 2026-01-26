@@ -1,1 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timelapse Sequence</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
+        body {
+            width: 100%; 
+            height: 100vh; 
+            overflow: hidden;
+            background: #000;
+        }
+
+        #bg-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Ensures full screen fill */
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <video id="bg-video" autoplay muted playsinline>
+        <source src="assets/strang_timelapses_1.mp4" type="video/mp4">
+    </video>
+
+    <script>
+        // --- CONFIGURATION ---
+        // List your files exactly as they are named in the assets folder
+        const playlist = [
+            "assets/strang_timelapses_1.mp4",
+            "assets/strang_timelapses_2.mp4",
+            "assets/strang_timelapses_3.mp4",
+            "assets/strang_timelapses_4.mp4",
+            "assets/strang_timelapses_5.mp4"
+        ];
+
+        // --- LOGIC ---
+        const videoPlayer = document.getElementById('bg-video');
+        let currentTrack = 0;
+
+        // Listen for when the video ends
+        videoPlayer.addEventListener('ended', () => {
+            // Move to the next track index
+            currentTrack++;
+
+            // If we've reached the end of the list, loop back to start (0)
+            if (currentTrack >= playlist.length) {
+                currentTrack = 0;
+            }
+
+            // Load and Play the next file
+            videoPlayer.src = playlist[currentTrack];
+            videoPlayer.play();
+        });
+        
+        // Error handling: If a video fails (e.g., file 3 is missing), skip to next
+        videoPlayer.addEventListener('error', () => {
+            console.log(`Error loading ${playlist[currentTrack]}, skipping...`);
+            currentTrack++;
+            if (currentTrack >= playlist.length) currentTrack = 0;
+            videoPlayer.src = playlist[currentTrack];
+            videoPlayer.play();
+        });
+
+    </script>
+</body>
+</html>
