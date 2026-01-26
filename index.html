@@ -3,147 +3,208 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Time-Synced Video Wall</title>
+    <title>Strang OS - Synced</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { width: 100%; height: 100vh; overflow: hidden; background: #000; }
-        
-        #bg-video {
+        @import url('https://fonts.cdnfonts.com/css/din-pro');
+
+        body, html { 
+            margin: 0; padding: 0; 
+            width: 100%; height: 100%; 
+            overflow: hidden; 
+            background-color: #000; 
+        }
+
+        /* --- STAGE --- */
+        #stage {
             position: absolute;
-            top: 0;
+            top: 0; left: 0;
+            width: 300vw; 
+            height: 100vh;
+        }
+
+        /* --- SLIDE FRAMES --- */
+        .slide-frame {
+            position: absolute;
+            left: 0;
+            width: 100%;
             height: 100%;
-            width: 300vw; /* 3 Screens Wide */
-            object-fit: cover;
-            /* No transition creates a snappier sync */
+            border: none;
+            /* Default transition for the "Fly Up" movement */
+            transition: transform 1.5s cubic-bezier(0.77, 0, 0.175, 1); 
+            will-change: transform;
         }
-        
-        /* Loading overlay to hide the setup process */
-        #loader {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; color: #fff; display: flex; 
-            justify-content: center; align-items: center; z-index: 999;
-            font-family: monospace;
+
+        /* POSITIONS */
+        .pos-center { transform: translateY(0); z-index: 10; }
+        .pos-bottom { transform: translateY(100vh); z-index: 5; } 
+        .pos-top    { transform: translateY(-100vh); z-index: 5; } 
+
+        /* --- UI LAYER --- */
+        .ui-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 999;
+            pointer-events: none;
+            transition: color 1.0s ease; 
         }
+
+        .text-white .corner-text { color: #ffffff; }
+        .text-black .corner-text { color: #000000; }
+
+        .corner-text {
+            position: absolute;
+            font-family: 'DIN Pro', sans-serif;
+            font-weight: 500;
+            font-size: 18px; 
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            display: none; 
+        }
+
+        .top-left { top: 30px; left: 30px; }
+        .bottom-left { bottom: 30px; left: 30px; }
+        .top-right { top: 30px; right: 30px; text-align: right; }
+        .bottom-right { bottom: 30px; right: 30px; text-align: right; }
     </style>
 </head>
 <body>
 
-    <div id="loader">Syncing with Master Clock...</div>
-    <video id="bg-video" muted playsinline></video>
+    <div id="stage">
+        <iframe id="frame-a" class="slide-frame pos-center"></iframe>
+        <iframe id="frame-b" class="slide-frame pos-bottom"></iframe>
+    </div>
+
+    <div id="ui-container" class="ui-layer text-black">
+        <div class="corner-text top-left" id="ui-brand">STRANG.DESIGN</div>
+        <div class="corner-text bottom-left" id="ui-city">MIAMI</div>
+        <div class="corner-text top-right" id="timer">00:00:00</div>
+        <div class="corner-text bottom-right" id="weather">LOADING...</div>
+    </div>
 
     <script>
-        // --- CONFIGURATION ---
-        const playlist = [
-            "assets/strang_timelapses_1.mp4",
-            "assets/strang_timelapses_2.mp4",
-            "assets/strang_timelapses_3.mp4",
-            "assets/strang_timelapses_4.mp4",
-            "assets/strang_timelapses_5.mp4"
+        // --- 1. CONFIGURATION ---
+        const urlParams = new URLSearchParams(window.location.search);
+        // Get the full query string (e.g., "?screen=left") so we can pass it to iframes
+        const currentQueryString = window.location.search; 
+        const screenID = (urlParams.get('screen') || 'center').toLowerCase().trim();
+        
+        // 2 Minutes per slide
+        const ROTATION_SPEED = 120000; 
+
+        // --- 2. PLAYLIST ---
+        const PLAYLIST = [
+            { file: 'strang_logo.html', uiColor: 'black' },
+            { file: 'strang_timelapses.html', uiColor: 'white' }, // <--- ADDED HERE
+            { file: 'strang_photo.html', uiColor: 'white' }
         ];
 
-        // --- GLOBAL VARS ---
-        const videoPlayer = document.getElementById('bg-video');
-        const loader = document.getElementById('loader');
-        let trackDurations = []; // We will fill this automatically
-        let totalLoopDuration = 0;
+        let currentIndex = -1; 
+        let activeFrameId = 'frame-a';
 
-        // --- 1. SETUP SCREEN POSITION ---
-        const urlParams = new URLSearchParams(window.location.search);
-        const screenPos = urlParams.get('screen') || 'left';
+        // --- 3. SYNC LOGIC ---
+        function checkSync() {
+            const now = Date.now();
+            const timeBlock = Math.floor(now / ROTATION_SPEED);
+            const targetIndex = timeBlock % PLAYLIST.length;
 
-        if (screenPos === 'center') {
-            videoPlayer.style.transform = "translateX(-100vw)";
-        } else if (screenPos === 'right') {
-            videoPlayer.style.transform = "translateX(-200vw)";
-        } else {
-            videoPlayer.style.transform = "translateX(0)";
-        }
-
-        // --- 2. PRE-LOADER (GET DURATIONS) ---
-        // We must know exact lengths of videos to build the timeline
-        async function loadDurations() {
-            console.log("Analyzing video lengths...");
-            
-            for (let src of playlist) {
-                const duration = await getVideoDuration(src);
-                trackDurations.push(duration);
-                totalLoopDuration += duration;
-            }
-            
-            console.log(`Total Loop Time: ${totalLoopDuration}s`);
-            loader.style.display = 'none'; // Hide loader
-            startSyncLoop(); // Start the engine
-        }
-
-        // Helper to fetch duration of a video file
-        function getVideoDuration(src) {
-            return new Promise((resolve) => {
-                const tempVideo = document.createElement('video');
-                tempVideo.preload = 'metadata';
-                tempVideo.src = src;
-                tempVideo.onloadedmetadata = () => resolve(tempVideo.duration);
-                // Fallback for errors: assume 10s if file breaks
-                tempVideo.onerror = () => resolve(10); 
-            });
-        }
-
-        // --- 3. THE MASTER CLOCK SYNC ---
-        function startSyncLoop() {
-            // Check sync every 100ms (10 times a second)
-            setInterval(syncVideoToClock, 100);
-        }
-
-        function syncVideoToClock() {
-            // A. Get Global Time (seconds)
-            const now = Date.now() / 1000;
-
-            // B. Find where we are in the "Grand Loop"
-            // The modulo (%) operator makes this loop forever based on Total Duration
-            let timeInLoop = now % totalLoopDuration;
-
-            // C. Figure out WHICH video should be playing at this specific second
-            let activeTrackIndex = 0;
-            let activeTrackStartTime = 0;
-
-            for (let i = 0; i < trackDurations.length; i++) {
-                // If "timeInLoop" is past this video, subtract duration and check next
-                if (timeInLoop > trackDurations[i]) {
-                    timeInLoop -= trackDurations[i];
+            if (targetIndex !== currentIndex) {
+                if (currentIndex === -1) {
+                    jumpToSlide(targetIndex);
                 } else {
-                    // Found it! We are inside this video
-                    activeTrackIndex = i;
-                    activeTrackStartTime = timeInLoop;
-                    break;
+                    transitionToSlide(targetIndex);
                 }
             }
-
-            // D. Apply to Player
-            const currentSrc = playlist[activeTrackIndex];
-            
-            // 1. If wrong video is loaded, switch it
-            if (!videoPlayer.src.includes(currentSrc)) {
-                console.log(`Switching to ${currentSrc}`);
-                videoPlayer.src = currentSrc;
-                videoPlayer.play().catch(e => console.log("Autoplay block:", e));
-            }
-
-            // 2. Drift Correction
-            // If the video player time is off by more than 0.3 seconds from the Clock, force a seek
-            // This ensures all screens snap back to grid if they drift
-            const timeDiff = Math.abs(videoPlayer.currentTime - activeTrackStartTime);
-            if (timeDiff > 0.3) {
-                console.log("Drift detected. Resyncing...");
-                videoPlayer.currentTime = activeTrackStartTime;
-            }
-            
-            // Ensure it's playing
-            if (videoPlayer.paused) {
-                videoPlayer.play().catch(e => {}); 
-            }
         }
 
-        // --- START ---
-        window.addEventListener('load', loadDurations);
+        // --- 4. TRANSITION FUNCTIONS ---
+
+        function jumpToSlide(index) {
+            const content = PLAYLIST[index];
+            const frame = document.getElementById(activeFrameId);
+            
+            // Pass the screen ID to the iframe
+            frame.src = content.file + currentQueryString;
+            
+            document.getElementById('ui-container').className = `ui-layer text-${content.uiColor}`;
+            currentIndex = index;
+        }
+
+        function transitionToSlide(index) {
+            const nextContent = PLAYLIST[index];
+            const currentFrame = document.getElementById(activeFrameId);
+            const nextFrameId = activeFrameId === 'frame-a' ? 'frame-b' : 'frame-a';
+            const nextFrame = document.getElementById(nextFrameId);
+
+            // --- INSTANT TELEPORT ---
+            nextFrame.style.transition = 'none';
+            nextFrame.className = 'slide-frame pos-bottom';
+            void nextFrame.offsetWidth; // Force Reflow
+
+            // Load content WITH screen ID
+            nextFrame.src = nextContent.file + currentQueryString;
+
+            // Fly Up
+            setTimeout(() => {
+                nextFrame.style.transition = ''; 
+                
+                currentFrame.className = 'slide-frame pos-top';   // Exit Up
+                nextFrame.className = 'slide-frame pos-center';   // Enter Up
+                
+                document.getElementById('ui-container').className = `ui-layer text-${nextContent.uiColor}`;
+                
+                activeFrameId = nextFrameId;
+                currentIndex = index;
+            }, 500); 
+        }
+
+        // --- 5. STANDARD SETUP ---
+        const stage = document.getElementById('stage');
+        function updateLayout() {
+            if (screenID === 'left')   stage.style.left = '0vw';
+            if (screenID === 'center') stage.style.left = '-100vw'; 
+            if (screenID === 'right')  stage.style.left = '-200vw'; 
+        }
+
+        function setupUI() {
+            const brand = document.getElementById('ui-brand');
+            const city = document.getElementById('ui-city');
+            const timer = document.getElementById('timer');
+            const weather = document.getElementById('weather');
+
+            if (screenID === 'left') { brand.style.display = 'block'; city.style.display = 'block'; }
+            if (screenID === 'right') { timer.style.display = 'block'; weather.style.display = 'block'; }
+        }
+
+        function updateTime() {
+            const now = new Date();
+            const estTime = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'America/New_York',
+                hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
+            }).format(now);
+            document.getElementById('timer').innerText = estTime + ":" + Math.floor(now.getMilliseconds()/100);
+            
+            checkSync(); 
+            
+            requestAnimationFrame(updateTime);
+        }
+
+        async function fetchWeather() {
+            try {
+                const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=25.7617&longitude=-80.1918&current_weather=true&temperature_unit=fahrenheit');
+                const data = await response.json();
+                if (data.current_weather) {
+                    document.getElementById('weather').innerText = `${Math.round(data.current_weather.temperature)}°F`;
+                }
+            } catch (e) {}
+        }
+
+        window.addEventListener('load', () => {
+            updateLayout();
+            setupUI();
+            updateTime();
+            fetchWeather();
+        });
+        window.addEventListener('resize', updateLayout);
 
     </script>
 </body>
