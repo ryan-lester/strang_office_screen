@@ -3,29 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seamless Timelapse</title>
+    <title>Timelapse Sequence</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { width: 100%; height: 100vh; overflow: hidden; background: #000; }
 
-        /* Two players for seamless crossfading */
-        .player {
-            position: absolute; top: 0; left: 0;
-            width: 100%; height: 100%;
-            object-fit: cover;
-            opacity: 0; /* Hidden by default */
-            transition: opacity 1s ease; /* Smooth Crossfade */
+        body {
+            width: 100%; 
+            height: 100vh; 
+            overflow: hidden;
+            background: #000;
         }
-        
-        .active { opacity: 1; z-index: 2; }
+
+        #bg-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Ensures full screen fill */
+            display: block;
+        }
     </style>
 </head>
 <body>
 
-    <video id="v1" class="player" muted playsinline></video>
-    <video id="v2" class="player" muted playsinline></video>
+    <video id="bg-video" autoplay muted playsinline>
+        <source src="assets/strang_timelapses_1.mp4" type="video/mp4">
+    </video>
 
     <script>
+        // --- CONFIGURATION ---
+        // List your files exactly as they are named in the assets folder
         const playlist = [
             "assets/strang_timelapses_1.mp4",
             "assets/strang_timelapses_2.mp4",
@@ -34,45 +42,32 @@
             "assets/strang_timelapses_5.mp4"
         ];
 
-        let currentIdx = 0;
-        let activePlayer = document.getElementById('v1');
-        let nextPlayer = document.getElementById('v2');
+        // --- LOGIC ---
+        const videoPlayer = document.getElementById('bg-video');
+        let currentTrack = 0;
 
-        function playNext() {
-            // Swap roles
-            const temp = activePlayer;
-            activePlayer = nextPlayer;
-            nextPlayer = temp;
+        // Listen for when the video ends
+        videoPlayer.addEventListener('ended', () => {
+            // Move to the next track index
+            currentTrack++;
 
-            // Load next video
-            activePlayer.src = playlist[currentIdx];
-            
-            // --- SYNC MAGIC ---
-            // If the video is long, screens might drift. 
-            // This forces them to start at 0 together.
-            activePlayer.currentTime = 0; 
-            
-            activePlayer.play().then(() => {
-                // Once playing, fade it in
-                activePlayer.classList.add('active');
-                nextPlayer.classList.remove('active');
+            // If we've reached the end of the list, loop back to start (0)
+            if (currentTrack >= playlist.length) {
+                currentTrack = 0;
+            }
 
-                // Prepare index for next loop
-                currentIdx++;
-                if (currentIdx >= playlist.length) currentIdx = 0;
-
-            }).catch(e => console.error("Play error", e));
-        }
-
-        // Detect when current video ends to trigger the swap
-        // We add listeners to BOTH players
-        document.getElementById('v1').addEventListener('ended', playNext);
-        document.getElementById('v2').addEventListener('ended', playNext);
-
-        // --- INIT ---
-        window.addEventListener('load', () => {
-            // Start the loop
-            playNext();
+            // Load and Play the next file
+            videoPlayer.src = playlist[currentTrack];
+            videoPlayer.play();
+        });
+        
+        // Error handling: If a video fails (e.g., file 3 is missing), skip to next
+        videoPlayer.addEventListener('error', () => {
+            console.log(`Error loading ${playlist[currentTrack]}, skipping...`);
+            currentTrack++;
+            if (currentTrack >= playlist.length) currentTrack = 0;
+            videoPlayer.src = playlist[currentTrack];
+            videoPlayer.play();
         });
 
     </script>
