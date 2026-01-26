@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Strang OS Controller v2</title>
+    <title>Strang OS - Synced</title>
     <style>
         @import url('https://fonts.cdnfonts.com/css/din-pro');
 
@@ -14,30 +14,29 @@
             background-color: #000; 
         }
 
-        /* --- STAGE CONTAINER --- */
+        /* --- STAGE --- */
         #stage {
             position: absolute;
             top: 0; left: 0;
-            width: 300vw; /* 3 Screens Wide */
+            width: 300vw; 
             height: 100vh;
-            /* Transition Logic handled by JS classes */
         }
 
-        /* --- THE SLIDES (Double Buffering) --- */
+        /* --- SLIDE FRAMES --- */
         .slide-frame {
             position: absolute;
             left: 0;
             width: 100%;
             height: 100%;
             border: none;
-            transition: transform 1.5s cubic-bezier(0.77, 0, 0.175, 1); /* "Fly Up" Easing */
+            transition: transform 1.5s cubic-bezier(0.77, 0, 0.175, 1); /* Fly Up Ease */
             will-change: transform;
         }
 
         /* POSITIONS */
         .pos-center { transform: translateY(0); z-index: 10; }
-        .pos-bottom { transform: translateY(100vh); z-index: 5; } /* Waiting below */
-        .pos-top    { transform: translateY(-100vh); z-index: 5; } /* Gone above */
+        .pos-bottom { transform: translateY(100vh); z-index: 5; } 
+        .pos-top    { transform: translateY(-100vh); z-index: 5; } 
 
         /* --- UI LAYER --- */
         .ui-layer {
@@ -45,10 +44,9 @@
             top: 0; left: 0; width: 100%; height: 100%;
             z-index: 999;
             pointer-events: none;
-            transition: color 1s ease; /* Smooth color fade */
+            transition: color 1.0s ease; 
         }
 
-        /* DYNAMIC COLOR CLASSES */
         .text-white .corner-text { color: #ffffff; }
         .text-black .corner-text { color: #000000; }
 
@@ -87,60 +85,87 @@
         const urlParams = new URLSearchParams(window.location.search);
         const screenID = (urlParams.get('screen') || 'center').toLowerCase().trim();
         
-        // DURATION: 2 Minutes in milliseconds
+        // DURATION: 2 Minutes (120,000 ms)
+        // Every 2 minutes on the system clock, the slides will change.
         const ROTATION_SPEED = 120000; 
 
-        // --- 2. THE PLAYLIST ---
+        // --- 2. PLAYLIST ---
         const PLAYLIST = [
             { 
                 file: 'strang_logo.html', 
-                uiColor: 'black' // Logo has white bg, so text needs to be black
+                uiColor: 'black' 
             },
             { 
                 file: 'strang_photo.html', 
-                uiColor: 'white' // Photo is likely dark, so text needs to be white
+                uiColor: 'white' 
             }
         ];
 
-        let currentIndex = 0;
-        let activeFrameId = 'frame-a'; // Tracks which iframe is currently visible
+        let currentIndex = -1; // Start invalid to force initial load
+        let activeFrameId = 'frame-a';
 
-        // --- 3. TRANSITION LOGIC ---
-        function loadNextSlide() {
-            // Calculate next index
-            const nextIndex = (currentIndex + 1) % PLAYLIST.length;
-            const nextContent = PLAYLIST[nextIndex];
+        // --- 3. SYNC LOGIC (The Brains) ---
+        function checkSync() {
+            // Get absolute world time in milliseconds
+            const now = Date.now();
+            
+            // Calculate how many "2-minute blocks" have passed since 1970
+            const timeBlock = Math.floor(now / ROTATION_SPEED);
+            
+            // Modulo finds our place in the playlist (0, 1, 0, 1...)
+            const targetIndex = timeBlock % PLAYLIST.length;
+
+            // If the time says we should be on a different slide than we are...
+            if (targetIndex !== currentIndex) {
+                if (currentIndex === -1) {
+                    // First Load: Just appear instantly, no animation
+                    jumpToSlide(targetIndex);
+                } else {
+                    // Update: Fly Up Animation
+                    transitionToSlide(targetIndex);
+                }
+            }
+        }
+
+        // --- 4. TRANSITION FUNCTIONS ---
+
+        function jumpToSlide(index) {
+            const content = PLAYLIST[index];
+            const frame = document.getElementById(activeFrameId);
+            
+            frame.src = content.file;
+            document.getElementById('ui-container').className = `ui-layer text-${content.uiColor}`;
+            
+            currentIndex = index;
+        }
+
+        function transitionToSlide(index) {
+            const nextContent = PLAYLIST[index];
 
             // Identify frames
             const currentFrame = document.getElementById(activeFrameId);
             const nextFrameId = activeFrameId === 'frame-a' ? 'frame-b' : 'frame-a';
             const nextFrame = document.getElementById(nextFrameId);
 
-            // 1. Prepare Next Frame (put it at bottom, load content)
+            // 1. Prepare Next Frame below
             nextFrame.className = 'slide-frame pos-bottom';
             nextFrame.src = nextContent.file;
 
-            // Wait a moment for iframe to load, then animate
-            // (In a production env, use onload, but timeout is smoother here)
+            // 2. Animate after brief delay for loading
             setTimeout(() => {
-                // 2. Animate!
-                // Current goes UP (out of view)
-                currentFrame.className = 'slide-frame pos-top';
-                // Next goes UP (into view)
-                nextFrame.className = 'slide-frame pos-center';
+                currentFrame.className = 'slide-frame pos-top'; // Fly Up
+                nextFrame.className = 'slide-frame pos-center'; // Fly In
+                
+                // Update UI Color
+                document.getElementById('ui-container').className = `ui-layer text-${nextContent.uiColor}`;
 
-                // 3. Update UI Color
-                const ui = document.getElementById('ui-container');
-                ui.className = `ui-layer text-${nextContent.uiColor}`;
-
-                // 4. Update State
+                // Update State
                 activeFrameId = nextFrameId;
-                currentIndex = nextIndex;
-
-            }, 500); // Small buffer to ensure content is ready
+                currentIndex = index;
+            }, 500); 
         }
 
-        // --- 4. SCREEN LAYOUT ---
+        // --- 5. STANDARD SETUP ---
         const stage = document.getElementById('stage');
         function updateLayout() {
             if (screenID === 'left')   stage.style.left = '0vw';
@@ -148,24 +173,16 @@
             if (screenID === 'right')  stage.style.left = '-200vw'; 
         }
 
-        // --- 5. UI TOGGLES ---
         function setupUI() {
             const brand = document.getElementById('ui-brand');
             const city = document.getElementById('ui-city');
             const timer = document.getElementById('timer');
             const weather = document.getElementById('weather');
 
-            if (screenID === 'left') {
-                brand.style.display = 'block';
-                city.style.display = 'block';
-            }
-            if (screenID === 'right') {
-                timer.style.display = 'block';
-                weather.style.display = 'block';
-            }
+            if (screenID === 'left') { brand.style.display = 'block'; city.style.display = 'block'; }
+            if (screenID === 'right') { timer.style.display = 'block'; weather.style.display = 'block'; }
         }
 
-        // --- 6. DATA FEEDS ---
         function updateTime() {
             const now = new Date();
             const estTime = new Intl.DateTimeFormat('en-US', {
@@ -173,6 +190,10 @@
                 hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
             }).format(now);
             document.getElementById('timer').innerText = estTime + ":" + Math.floor(now.getMilliseconds()/100);
+            
+            // Run the sync check constantly
+            checkSync();
+            
             requestAnimationFrame(updateTime);
         }
 
@@ -190,17 +211,8 @@
         window.addEventListener('load', () => {
             updateLayout();
             setupUI();
-            updateTime();
+            updateTime(); // This starts the sync loop
             fetchWeather();
-
-            // Load Initial Content
-            const startContent = PLAYLIST[0];
-            const firstFrame = document.getElementById('frame-a');
-            firstFrame.src = startContent.file;
-            document.getElementById('ui-container').className = `ui-layer text-${startContent.uiColor}`;
-
-            // Start Rotation
-            setInterval(loadNextSlide, ROTATION_SPEED);
         });
         window.addEventListener('resize', updateLayout);
 
