@@ -11,35 +11,44 @@
             margin: 0; padding: 0; 
             width: 100%; height: 100%; 
             overflow: hidden; 
-            background-color: #000; 
+            background-color: #111;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        /* --- STAGE --- */
+        #scaler {
+            position: relative;
+            width: 1080px;
+            height: 1920px;
+            background: #000;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            flex-shrink: 0;
+            transform-origin: center center;
+        }
+
         #stage {
             position: absolute;
             top: 0; left: 0;
-            width: 300vw; 
-            height: 100vh;
+            width: 3240px; 
+            height: 1920px;
         }
 
-        /* --- SLIDE FRAMES --- */
         .slide-frame {
             position: absolute;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 3240px;
+            height: 1920px;
             border: none;
-            /* Default transition for the "Fly Up" movement */
             transition: transform 1.5s cubic-bezier(0.77, 0, 0.175, 1); 
             will-change: transform;
         }
 
-        /* POSITIONS */
         .pos-center { transform: translateY(0); z-index: 10; }
-        .pos-bottom { transform: translateY(100vh); z-index: 5; } 
-        .pos-top    { transform: translateY(-100vh); z-index: 5; } 
+        .pos-bottom { transform: translateY(1920px); z-index: 5; } 
+        .pos-top    { transform: translateY(-1920px); z-index: 5; } 
 
-        /* --- UI LAYER --- */
         .ui-layer {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -69,39 +78,48 @@
 </head>
 <body>
 
-    <div id="stage">
-        <iframe id="frame-a" class="slide-frame pos-center"></iframe>
-        <iframe id="frame-b" class="slide-frame pos-bottom"></iframe>
-    </div>
+    <div id="scaler">
+        <div id="stage">
+            <iframe id="frame-a" class="slide-frame pos-center"></iframe>
+            <iframe id="frame-b" class="slide-frame pos-bottom"></iframe>
+        </div>
 
-    <div id="ui-container" class="ui-layer text-black">
-        <div class="corner-text top-left" id="ui-brand">STRANG.DESIGN</div>
-        <div class="corner-text bottom-left" id="ui-city">MIAMI</div>
-        <div class="corner-text top-right" id="timer">00:00:00</div>
-        <div class="corner-text bottom-right" id="weather">LOADING...</div>
+        <div id="ui-container" class="ui-layer text-black">
+            <div class="corner-text top-left" id="ui-brand">STRANG.DESIGN</div>
+            <div class="corner-text bottom-left" id="ui-city">MIAMI</div>
+            <div class="corner-text top-right" id="timer">00:00:00</div>
+            <div class="corner-text bottom-right" id="weather">LOADING...</div>
+        </div>
     </div>
 
     <script>
-        // --- 1. CONFIGURATION ---
         const urlParams = new URLSearchParams(window.location.search);
-        // Get the full query string (e.g., "?screen=left") so we can pass it to iframes
         const currentQueryString = window.location.search; 
         const screenID = (urlParams.get('screen') || 'center').toLowerCase().trim();
         
-        // 2 Minutes per slide
         const ROTATION_SPEED = 120000; 
 
-        // --- 2. PLAYLIST ---
         const PLAYLIST = [
             { file: 'strang_logo.html', uiColor: 'black' },
-            { file: 'strang_timelapses.html', uiColor: 'white' }, // <--- ADDED HERE
+            { file: 'strang_timelapses.html', uiColor: 'white' },
             { file: 'strang_photo.html', uiColor: 'white' }
         ];
 
         let currentIndex = -1; 
         let activeFrameId = 'frame-a';
 
-        // --- 3. SYNC LOGIC ---
+        function fitToScreen() {
+            const scaler = document.getElementById('scaler');
+            const targetWidth = 1080;
+            const targetHeight = 1920;
+            
+            const scaleX = window.innerWidth / targetWidth;
+            const scaleY = window.innerHeight / targetHeight;
+            const scale = Math.min(scaleX, scaleY);
+
+            scaler.style.transform = `scale(${scale})`;
+        }
+
         function checkSync() {
             const now = Date.now();
             const timeBlock = Math.floor(now / ROTATION_SPEED);
@@ -116,15 +134,10 @@
             }
         }
 
-        // --- 4. TRANSITION FUNCTIONS ---
-
         function jumpToSlide(index) {
             const content = PLAYLIST[index];
             const frame = document.getElementById(activeFrameId);
-            
-            // Pass the screen ID to the iframe
             frame.src = content.file + currentQueryString;
-            
             document.getElementById('ui-container').className = `ui-layer text-${content.uiColor}`;
             currentIndex = index;
         }
@@ -135,20 +148,17 @@
             const nextFrameId = activeFrameId === 'frame-a' ? 'frame-b' : 'frame-a';
             const nextFrame = document.getElementById(nextFrameId);
 
-            // --- INSTANT TELEPORT ---
             nextFrame.style.transition = 'none';
             nextFrame.className = 'slide-frame pos-bottom';
-            void nextFrame.offsetWidth; // Force Reflow
+            void nextFrame.offsetWidth;
 
-            // Load content WITH screen ID
             nextFrame.src = nextContent.file + currentQueryString;
 
-            // Fly Up
             setTimeout(() => {
                 nextFrame.style.transition = ''; 
                 
-                currentFrame.className = 'slide-frame pos-top';   // Exit Up
-                nextFrame.className = 'slide-frame pos-center';   // Enter Up
+                currentFrame.className = 'slide-frame pos-top';
+                nextFrame.className = 'slide-frame pos-center';
                 
                 document.getElementById('ui-container').className = `ui-layer text-${nextContent.uiColor}`;
                 
@@ -157,12 +167,14 @@
             }, 500); 
         }
 
-        // --- 5. STANDARD SETUP ---
         const stage = document.getElementById('stage');
+        
         function updateLayout() {
-            if (screenID === 'left')   stage.style.left = '0vw';
-            if (screenID === 'center') stage.style.left = '-100vw'; 
-            if (screenID === 'right')  stage.style.left = '-200vw'; 
+            if (screenID === 'left')   stage.style.left = '0px';
+            if (screenID === 'center') stage.style.left = '-1080px'; 
+            if (screenID === 'right')  stage.style.left = '-2160px'; 
+            
+            fitToScreen();
         }
 
         function setupUI() {
@@ -184,7 +196,6 @@
             document.getElementById('timer').innerText = estTime + ":" + Math.floor(now.getMilliseconds()/100);
             
             checkSync(); 
-            
             requestAnimationFrame(updateTime);
         }
 
