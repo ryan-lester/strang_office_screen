@@ -84,52 +84,44 @@
 
     <script>
         // --- CONFIGURATION ---
-        const path = 'slides/'; 
+        // Ensure your folder is named exactly "headshots" and is in the same directory as this file.
+        const path = 'headshots/'; 
         const slideDuration = 3000; // 3 Seconds per slide
 
         const slides = [
-            'Strang Foyer_01.jpg', 'Strang Foyer_02.jpg', 'Strang Foyer_03.jpg', 
-            'Strang Foyer_04.jpg', 'Strang Foyer_05.jpg', 'Strang Foyer_06.jpg', 
-            'Strang Foyer_07.jpg', 'Strang Foyer_08.jpg', 'Strang Foyer_09.jpg', 
-            'Strang Foyer_10.jpg', 'Strang Foyer_11.jpg', 'Strang Foyer_12.jpg', 
-            'Strang Foyer_13.jpg', 'Strang Foyer_14.jpg', 'Strang Foyer_15.jpg', 
-            'Strang Foyer_16.jpg', 'Strang Foyer_17.jpg', 'Strang Foyer_18.jpg', 
-            'Strang Foyer_19.jpg', 'Strang Foyer_20.jpg', 'Strang Foyer_21.jpg', 
-            'Strang Foyer_22.jpg', 'Strang Foyer_23.jpg', 'Strang Foyer_24.jpg', 
-            'Strang Foyer_25.jpg', 'Strang Foyer_26.jpg', 'Strang Foyer_27.jpg', 
-            'Strang Foyer_28.jpg', 'Strang Foyer_29.jpg', 'Strang Foyer_30.jpg', 
-            'Strang Foyer_31.jpg', 'Strang Foyer_32.jpg', 'Strang Foyer_33.jpg', 
-            'Strang Foyer_34.jpg', 'Strang Foyer_35.jpg', 'Strang Foyer_36.jpg', 
-            'Strang Foyer_37.jpg', 'Strang Foyer_38.jpg', 'Strang Foyer_39.jpg', 
-            'Strang Foyer_40.jpg', 'Strang Foyer_41.jpg', 'Strang Foyer_42.jpg', 
-            'Strang Foyer_43.jpg', 'Strang Foyer_44.jpg', 'Strang Foyer_45.jpg', 
-            'Strang Foyer_46.jpg', 'Strang Foyer_47.jpg', 'Strang Foyer_48.jpg', 
-            'Strang Foyer_49.jpg', 'Strang Foyer_50.jpg', 'Strang Foyer_51.jpg', 
-            'Strang Foyer_52.jpg', 'Strang Foyer_53.jpg', 'Strang Foyer_54.jpg', 
-            'Strang Foyer_55.jpg', 'Strang Foyer_56.jpg', 'Strang Foyer_57.jpg', 
-            'Strang Foyer_58.jpg', 'Strang Foyer_59.jpg', 'Strang Foyer_60.jpg', 
-            'Strang Foyer_61.jpg', 'Strang Foyer_62.jpg', 'Strang Foyer_63.jpg', 
-            'Strang Foyer_64.jpg', 'Strang Foyer_65.jpg', 'Strang Foyer_66.jpg', 
-            'Strang Foyer_67.jpg', 'Strang Foyer_68.jpg', 'Strang Foyer_69.jpg', 
-            'Strang Foyer_70.jpg', 'Strang Foyer_71.jpg', 'Strang Foyer_72.jpg', 
-            'Strang Foyer_73.jpg', 'Strang Foyer_74.jpg', 'Strang Foyer_75.jpg', 
-            'Strang Foyer_76.jpg', 'Strang Foyer_77.jpg', 'Strang Foyer_78.jpg', 
-            'Strang Foyer_79.jpg', 'Strang Foyer_80.jpg', 'Strang Foyer_81.jpg'
+            'Strang Foyer_02.jpg',
+            'Strang Foyer_03.jpg',
+            'Strang Foyer_04.jpg',
+            'Strang Foyer_05.jpg',
+            'Strang Foyer_06.jpg',
+            'Strang Foyer_07.jpg',
+            'Strang Foyer_08.jpg',
+            'Strang Foyer_09.jpg',
+            'Strang Foyer_10.jpg',
+            'Strang Foyer_11.jpg',
+            'Strang Foyer_12.jpg',
+            'Strang Foyer_13.jpg',
+            'Strang Foyer_14.jpg',
+            'Strang Foyer_15.jpg',
+            'Strang Foyer_16.jpg',
         ];
 
         // --- PRELOAD LOGIC ---
         let loadedCount = 0;
         const totalImages = slides.length;
-        // We store the actual Image objects in memory here
         const imageObjects = []; 
 
         function startPreloading() {
             for (let i = 0; i < totalImages; i++) {
                 const img = new Image();
+                // This concatenates 'headshots/' + 'filename.jpg'
                 img.src = path + slides[i];
                 
                 img.onload = () => { onImageLoaded(); };
-                img.onerror = () => { onImageLoaded(); }; // Proceed even if one fails
+                img.onerror = () => { 
+                    console.error("Failed to load:", img.src);
+                    onImageLoaded(); 
+                }; 
                 
                 imageObjects[i] = img; // Keep in memory
             }
