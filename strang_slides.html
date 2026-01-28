@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Strang Slideshow</title>
+    <title>Strang Slideshow - Synced</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            /* Fills the 3240x1920 viewport */
             width: 100%; 
             height: 100vh; 
             overflow: hidden;
@@ -20,9 +19,13 @@
             top: 0; left: 0;
             width: 100%;
             height: 100%;
-            object-fit: cover; /* Ensures image covers the screens perfectly */
+            object-fit: cover;
             opacity: 0;
-            transition: opacity 1.5s ease-in-out; /* Smooth crossfade */
+            /* TRANSITION SETTINGS:
+               1.5s fade makes it smooth.
+               ease-in-out makes it feel natural.
+            */
+            transition: opacity 1.5s ease-in-out; 
             z-index: 1;
             will-change: opacity;
         }
@@ -35,7 +38,7 @@
 </head>
 <body>
 
-    <img id="slot-1" class="slide active" src="" alt="">
+    <img id="slot-1" class="slide" src="" alt="">
     <img id="slot-2" class="slide" src="" alt="">
 
     <script>
@@ -50,48 +53,67 @@
         ];
 
         const path = 'slides/';
-        const duration = 3000; // 3 Seconds per slide
+        const slideDuration = 3000; // 3 Seconds per slide
 
         // -------------------------------------------------------
 
-        let currentIndex = 0;
+        let currentIndex = -1; // Start at -1 to ensure first load triggers
         let activeSlot = 1;
-
+        
         const img1 = document.getElementById('slot-1');
         const img2 = document.getElementById('slot-2');
 
-        // Initialize first image immediately
-        if (slides.length > 0) {
-            img1.src = path + slides[0];
+        // Pre-fill slots (optional optimization)
+        img1.src = path + slides[0];
+
+        function getSyncedIndex() {
+            // THE WORLD CLOCK LOGIC
+            // 1. Get current time in ms
+            const now = Date.now();
+            
+            // 2. Calculate total length of the playlist in ms
+            const totalLoopDuration = slides.length * slideDuration;
+            
+            // 3. Find where we are in the loop right now (0 to 15000)
+            const loopPosition = now % totalLoopDuration;
+            
+            // 4. Determine which slide index that corresponds to
+            return Math.floor(loopPosition / slideDuration);
         }
 
-        function nextSlide() {
-            // Calculate next index
-            const nextIndex = (currentIndex + 1) % slides.length;
-            const nextImageSrc = path + slides[nextIndex];
+        function updateSlide() {
+            const targetIndex = getSyncedIndex();
 
-            // Determine which slot is currently hidden
-            const currentImg = activeSlot === 1 ? img1 : img2;
-            const nextImg = activeSlot === 1 ? img2 : img1;
+            // Only do work if the slide needs to change
+            if (targetIndex !== currentIndex) {
+                
+                // Determine next image source
+                const nextImageSrc = path + slides[targetIndex];
 
-            // Load next image into the hidden slot
-            nextImg.src = nextImageSrc;
-            
-            // Wait for image to load before fading
-            nextImg.onload = () => {
+                // Determine which slot is currently hidden
+                const currentImg = activeSlot === 1 ? img1 : img2;
+                const nextImg = activeSlot === 1 ? img2 : img1;
+
+                // Load and show next image
+                nextImg.src = nextImageSrc;
+                
+                // Note: We skip the .onload check here to ensure strict timing sync.
+                // The browser cache usually handles the speed after the first loop.
                 nextImg.classList.add('active');
                 currentImg.classList.remove('active');
-                
-                // Swap logic vars
+
+                // Update state
                 activeSlot = activeSlot === 1 ? 2 : 1;
-                currentIndex = nextIndex;
-            };
+                currentIndex = targetIndex;
+            }
+
+            // Keep checking every frame
+            requestAnimationFrame(updateSlide);
         }
 
-        // Start the loop
-        if (slides.length > 1) {
-            setInterval(nextSlide, duration);
-        }
+        // Start the engine
+        requestAnimationFrame(updateSlide);
+
     </script>
 
 </body>
