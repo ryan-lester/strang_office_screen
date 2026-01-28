@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strang Slideshow</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            width: 100%; 
+            height: 100vh; 
+            overflow: hidden;
+            background: #000;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Ensures image covers the full 3240x1920 area */
+            opacity: 0;
+            transition: opacity 1s ease-in-out; /* Smooth crossfade */
+            z-index: 1;
+        }
+
+        .slide.active {
+            opacity: 1;
+            z-index: 2;
+        }
+    </style>
+</head>
+<body>
+
+    <img id="slot-1" class="slide active" src="" alt="">
+    <img id="slot-2" class="slide" src="" alt="">
+
+    <script>
+        // CONFIGURATION -----------------------------------------
+        
+        // 1. List your exact filenames here. 
+        //    Make sure these files exist inside your 'slides' folder.
+        const slides = [
+            'slide1.jpg',
+            'slide2.jpg',
+            'slide3.jpg', 
+            'slide4.jpg' 
+        ];
+
+        // 2. Path to folder
+        const path = 'slides/';
+
+        // 3. Time per slide (in milliseconds)
+        const duration = 3000; 
+
+        // -------------------------------------------------------
+
+        let currentIndex = 0;
+        let activeSlot = 1;
+
+        const img1 = document.getElementById('slot-1');
+        const img2 = document.getElementById('slot-2');
+
+        // Initialize first image
+        if (slides.length > 0) {
+            img1.src = path + slides[0];
+        }
+
+        function nextSlide() {
+            // Calculate next index
+            const nextIndex = (currentIndex + 1) % slides.length;
+            const nextImageSrc = path + slides[nextIndex];
+
+            // Determine which slot is currently hidden and needs to load the next image
+            const currentImg = activeSlot === 1 ? img1 : img2;
+            const nextImg = activeSlot === 1 ? img2 : img1;
+
+            // Load next image into the hidden slot
+            nextImg.src = nextImageSrc;
+            
+            // Wait for image to load before fading (prevents white flashes)
+            nextImg.onload = () => {
+                nextImg.classList.add('active');
+                currentImg.classList.remove('active');
+                
+                // Swap logic vars
+                activeSlot = activeSlot === 1 ? 2 : 1;
+                currentIndex = nextIndex;
+            };
+        }
+
+        // Start the loop
+        if (slides.length > 1) {
+            setInterval(nextSlide, duration);
+        }
+    </script>
+
+</body>
+</html>
