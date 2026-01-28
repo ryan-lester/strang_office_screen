@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Strang Slideshow - Synced (81 Slides)</title>
+    <title>Strang Slideshow - Buffered</title>
     <style>
+        @import url('https://fonts.cdnfonts.com/css/din-pro');
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
@@ -12,19 +14,53 @@
             height: 100vh; 
             overflow: hidden;
             background: #000;
+            font-family: 'DIN Pro', sans-serif;
         }
 
+        /* --- LOADING SCREEN --- */
+        #loader {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #000;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease-out;
+        }
+
+        #progress-text {
+            color: #fff;
+            font-size: 24px;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+        }
+
+        #progress-bar-bg {
+            width: 300px;
+            height: 2px;
+            background: #333;
+        }
+
+        #progress-bar-fill {
+            width: 0%;
+            height: 100%;
+            background: #fff;
+            transition: width 0.1s linear;
+        }
+
+        /* --- SLIDESHOW --- */
         .slide {
             position: absolute;
             top: 0; left: 0;
             width: 100%;
             height: 100%;
             object-fit: cover;
-            /* No transition - Instant Cut */
             opacity: 0;
-            transition: none;
+            transition: none; /* Instant Cut */
             z-index: 1;
-            /* Optimization to prevent painting issues */
             will-change: opacity;
         }
 
@@ -36,12 +72,18 @@
 </head>
 <body>
 
+    <div id="loader">
+        <div id="progress-text">LOADING 0%</div>
+        <div id="progress-bar-bg">
+            <div id="progress-bar-fill"></div>
+        </div>
+    </div>
+
     <img id="slot-1" class="slide" src="" alt="">
     <img id="slot-2" class="slide" src="" alt="">
 
     <script>
-        // CONFIGURATION -----------------------------------------
-        
+        // --- CONFIGURATION ---
         const path = 'slides/'; 
         const slideDuration = 3000; // 3 Seconds per slide
 
@@ -75,35 +117,53 @@
             'Strang Foyer_79.jpg', 'Strang Foyer_80.jpg', 'Strang Foyer_81.jpg'
         ];
 
-        // -------------------------------------------------------
+        // --- PRELOAD LOGIC ---
+        let loadedCount = 0;
+        const totalImages = slides.length;
+        // We store the actual Image objects in memory here
+        const imageObjects = []; 
 
-        let currentIndex = -1; 
-        let activeSlot = 1;
-        
-        const img1 = document.getElementById('slot-1');
-        const img2 = document.getElementById('slot-2');
-
-        // CACHE SYSTEM
-        // Keeps track of images we have already requested to load
-        const preloadCache = new Set();
-
-        function preloadImage(index) {
-            // Wrap around if at the end of the list
-            if (index >= slides.length) index = index % slides.length;
-            
-            if (!preloadCache.has(index)) {
+        function startPreloading() {
+            for (let i = 0; i < totalImages; i++) {
                 const img = new Image();
-                img.src = path + slides[index];
-                preloadCache.add(index);
+                img.src = path + slides[i];
+                
+                img.onload = () => { onImageLoaded(); };
+                img.onerror = () => { onImageLoaded(); }; // Proceed even if one fails
+                
+                imageObjects[i] = img; // Keep in memory
             }
         }
 
-        function getSyncedIndex() {
-            // WORLD CLOCK LOGIC
-            const now = Date.now();
+        function onImageLoaded() {
+            loadedCount++;
+            const percent = Math.floor((loadedCount / totalImages) * 100);
             
-            // Just divide time by duration and modulo by total slides
-            // This is safer math for long uptimes
+            // Update UI
+            document.getElementById('progress-text').innerText = `LOADING ${percent}%`;
+            document.getElementById('progress-bar-fill').style.width = `${percent}%`;
+
+            if (loadedCount >= totalImages) {
+                // All done! Fade out loader and start show
+                setTimeout(() => {
+                    const loader = document.getElementById('loader');
+                    loader.style.opacity = '0';
+                    setTimeout(() => { loader.style.display = 'none'; }, 500);
+                    
+                    // START THE ENGINE
+                    requestAnimationFrame(updateSlide);
+                }, 500);
+            }
+        }
+
+        // --- PLAYBACK LOGIC ---
+        let currentIndex = -1; 
+        let activeSlot = 1;
+        const img1 = document.getElementById('slot-1');
+        const img2 = document.getElementById('slot-2');
+
+        function getSyncedIndex() {
+            const now = Date.now();
             const globalTick = Math.floor(now / slideDuration);
             return globalTick % slides.length;
         }
@@ -111,26 +171,17 @@
         function updateSlide() {
             const targetIndex = getSyncedIndex();
 
-            // Preload the NEXT 5 images aggressively
-            // This ensures they are in browser memory before we need them
-            for (let i = 1; i <= 5; i++) {
-                preloadImage(targetIndex + i);
-            }
-
             if (targetIndex !== currentIndex) {
+                // We use the preloaded source from memory
+                const nextImageSrc = imageObjects[targetIndex].src;
                 
-                const nextImageSrc = path + slides[targetIndex];
                 const currentImg = activeSlot === 1 ? img1 : img2;
                 const nextImg = activeSlot === 1 ? img2 : img1;
 
-                // Set source
                 nextImg.src = nextImageSrc;
-                
-                // Swap Active Classes
                 nextImg.classList.add('active');
                 currentImg.classList.remove('active');
 
-                // Update Logic
                 activeSlot = activeSlot === 1 ? 2 : 1;
                 currentIndex = targetIndex;
             }
@@ -138,9 +189,9 @@
             requestAnimationFrame(updateSlide);
         }
 
-        // Kickoff
-        requestAnimationFrame(updateSlide);
-    </script>
+        // Init
+        startPreloading();
 
+    </script>
 </body>
 </html>
