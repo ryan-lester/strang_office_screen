@@ -84,27 +84,14 @@
 
     <script>
         // --- CONFIGURATION ---
-        // Ensure your folder is named exactly "headshots" and is in the same directory as this file.
-        const path = 'headshots/'; 
-        const slideDuration = 20000; // 3 Seconds per slide
+        const path = '/soft_opening/'; 
+        const slideDuration = 20000; // 20 Seconds per slide
 
-        const slides = [
-            'Strang Foyer_02.jpg',
-            'Strang Foyer_03.jpg',
-            'Strang Foyer_04.jpg',
-            'Strang Foyer_05.jpg',
-            'Strang Foyer_06.jpg',
-            'Strang Foyer_07.jpg',
-            'Strang Foyer_08.jpg',
-            'Strang Foyer_09.jpg',
-            'Strang Foyer_10.jpg',
-            'Strang Foyer_11.jpg',
-            'Strang Foyer_12.jpg',
-            'Strang Foyer_13.jpg',
-            'Strang Foyer_14.jpg',
-            'Strang Foyer_15.jpg',
-            'Strang Foyer_16.jpg',
-        ];
+        // Automatically generate the list from 1 to 38
+        const slides = [];
+        for (let i = 1; i <= 38; i++) {
+            slides.push(`strang_slides-${i}.jpg`);
+        }
 
         // --- PRELOAD LOGIC ---
         let loadedCount = 0;
@@ -114,7 +101,6 @@
         function startPreloading() {
             for (let i = 0; i < totalImages; i++) {
                 const img = new Image();
-                // This concatenates 'headshots/' + 'filename.jpg'
                 img.src = path + slides[i];
                 
                 img.onload = () => { onImageLoaded(); };
