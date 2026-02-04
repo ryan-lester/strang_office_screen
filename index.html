@@ -17,6 +17,31 @@
             justify-content: center;
         }
 
+        /* --- FULLSCREEN TOGGLE BUTTON --- */
+        #fs-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10001; /* Stay above everything */
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 10px 15px;
+            cursor: pointer;
+            font-family: 'DIN Pro', sans-serif;
+            font-size: 12px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            border-radius: 4px;
+            transition: opacity 0.3s;
+        }
+
+        #fs-btn:hover { background: rgba(255, 255, 255, 0.3); }
+
+        /* Auto-hide the button when already in fullscreen mode */
+        :fullscreen #fs-btn { display: none; }
+        :-webkit-full-screen #fs-btn { display: none; }
+
         #scaler {
             position: relative;
             width: 1080px;
@@ -32,8 +57,6 @@
             top: 0; left: 0;
             width: 3240px; 
             height: 1920px;
-            /* Transition added to stage for smooth window movement if you change screens dynamically, 
-               otherwise not strictly necessary for static screens */
             transition: left 0.5s ease; 
         }
 
@@ -53,7 +76,6 @@
             pointer-events: none;
         }
 
-        /* Defaulting to White text for photos */
         .text-white .corner-text { color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
         .text-black .corner-text { color: #000000; }
 
@@ -75,6 +97,8 @@
 </head>
 <body>
 
+    <button id="fs-btn">Enter Fullscreen</button>
+
     <div id="scaler">
         <div id="stage">
             <iframe id="main-frame"></iframe>
@@ -89,11 +113,31 @@
     </div>
 
     <script>
+        // --- FULLSCREEN LOGIC ---
+        const fsBtn = document.getElementById('fs-btn');
+        
+        fsBtn.addEventListener('click', () => {
+            const docElm = document.documentElement;
+            // Support for standard and Safari (webkit)
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                if (docElm.requestFullscreen) {
+                    docElm.requestFullscreen();
+                } else if (docElm.webkitRequestFullscreen) {
+                    docElm.webkitRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
+            }
+        });
+
         const urlParams = new URLSearchParams(window.location.search);
         const currentQueryString = window.location.search; 
         const screenID = (urlParams.get('screen') || 'center').toLowerCase().trim();
         
-        // Target Source
         const SOURCE_FILE = 'strang_slides.html';
 
         function fitToScreen() {
@@ -111,7 +155,6 @@
         const stage = document.getElementById('stage');
         
         function updateLayout() {
-            // Moves the "Camera" (Stage) based on screen ID
             if (screenID === 'left')   stage.style.left = '0px';
             if (screenID === 'center') stage.style.left = '-1080px'; 
             if (screenID === 'right')  stage.style.left = '-2160px'; 
@@ -121,7 +164,6 @@
 
         function loadContent() {
             const frame = document.getElementById('main-frame');
-            // Pass the query string down to the child just in case it needs it
             frame.src = SOURCE_FILE + currentQueryString;
         }
 
@@ -142,9 +184,7 @@
                 hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
             }).format(now);
             
-            // Added milliseconds for that technical feel
             document.getElementById('timer').innerText = estTime;
-            
             requestAnimationFrame(updateTime);
         }
 
