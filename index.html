@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Strang OS - Synced (Single Source)</title>
+    <title>Strang OS - Synced</title>
     <style>
-        /* This specific CDN link includes the various weights and widths */
+        /* No @import needed if using system DIN Condensed, 
+           but keeping DIN Pro as a backup for other elements */
         @import url('https://fonts.cdnfonts.com/css/din-pro');
 
         body, html { 
@@ -27,19 +28,19 @@
             background: rgba(255, 255, 255, 0.1);
             color: white;
             border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 8px 12px;
+            padding: 10px 15px;
             cursor: pointer;
             font-family: 'DIN Pro', sans-serif;
             font-size: 10px;
             letter-spacing: 2px;
             text-transform: uppercase;
-            border-radius: 2px;
+            border-radius: 4px;
             transition: all 0.3s;
         }
 
         #fs-btn:hover { background: rgba(255, 255, 255, 0.3); border-color: #fff; }
 
-        /* Hide when in fullscreen */
+        /* Hide button when in fullscreen */
         :fullscreen #fs-btn { display: none; }
         :-webkit-full-screen #fs-btn { display: none; }
 
@@ -77,17 +78,17 @@
             pointer-events: none;
         }
 
-        .text-white .corner-text { color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+        .text-white .corner-text { color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
 
-        /* --- THE FIX: REAL DIN PRO CONDENSED BOLD --- */
+        /* --- THE FIX: AUTHENTIC DIN CONDENSED --- */
         .corner-text {
             position: absolute;
-            /* Explicitly calling the Condensed family variant */
-            font-family: 'DIN Pro Condensed', 'DIN Pro', sans-serif;
+            /* 'DIN Condensed' is the standard name for the macOS/iOS system font */
+            font-family: 'DIN Condensed', 'Arial Narrow', sans-serif;
             font-weight: 700; 
-            font-size: 42px; /* Bumped size since condensed is narrower */
+            font-size: 52px; /* DIN Condensed is very narrow, so it needs more height */
             text-transform: uppercase;
-            letter-spacing: 1.5px; 
+            letter-spacing: 2px; 
             display: none; 
         }
 
@@ -115,16 +116,22 @@
     </div>
 
     <script>
-        // Fullscreen Logic for Safari & Chrome
+        // Fullscreen Logic
         const fsBtn = document.getElementById('fs-btn');
         fsBtn.addEventListener('click', () => {
             const docElm = document.documentElement;
             if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-                if (docElm.requestFullscreen) docElm.requestFullscreen();
-                else if (docElm.webkitRequestFullscreen) docElm.webkitRequestFullscreen();
+                if (docElm.requestFullscreen) {
+                    docElm.requestFullscreen();
+                } else if (docElm.webkitRequestFullscreen) {
+                    docElm.webkitRequestFullscreen();
+                }
             } else {
-                if (document.exitFullscreen) document.exitFullscreen();
-                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
             }
         });
 
