@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Strang OS - Synced (Single Source)</title>
     <style>
-        /* Updated Import to include Condensed styles */
+        /* This specific CDN link includes the various weights and widths */
         @import url('https://fonts.cdnfonts.com/css/din-pro');
 
         body, html { 
@@ -24,21 +24,22 @@
             bottom: 20px;
             right: 20px;
             z-index: 10001;
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.1);
             color: white;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            padding: 10px 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px 12px;
             cursor: pointer;
             font-family: 'DIN Pro', sans-serif;
-            font-size: 12px;
+            font-size: 10px;
             letter-spacing: 2px;
             text-transform: uppercase;
-            border-radius: 4px;
-            transition: opacity 0.3s;
+            border-radius: 2px;
+            transition: all 0.3s;
         }
 
-        #fs-btn:hover { background: rgba(255, 255, 255, 0.3); }
+        #fs-btn:hover { background: rgba(255, 255, 255, 0.3); border-color: #fff; }
 
+        /* Hide when in fullscreen */
         :fullscreen #fs-btn { display: none; }
         :-webkit-full-screen #fs-btn { display: none; }
 
@@ -76,19 +77,17 @@
             pointer-events: none;
         }
 
-        .text-white .corner-text { color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
-        .text-black .corner-text { color: #000000; }
+        .text-white .corner-text { color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
 
-        /* --- UPDATED CORNER TEXT STYLES --- */
+        /* --- THE FIX: REAL DIN PRO CONDENSED BOLD --- */
         .corner-text {
             position: absolute;
-            /* Using the Bold Condensed variant if available, otherwise force Bold */
-            font-family: 'DIN Pro', sans-serif;
-            font-stretch: condensed; 
+            /* Explicitly calling the Condensed family variant */
+            font-family: 'DIN Pro Condensed', 'DIN Pro', sans-serif;
             font-weight: 700; 
-            font-size: 38px; 
+            font-size: 42px; /* Bumped size since condensed is narrower */
             text-transform: uppercase;
-            letter-spacing: 2px; /* Reduced slightly for condensed look */
+            letter-spacing: 1.5px; 
             display: none; 
         }
 
@@ -116,7 +115,7 @@
     </div>
 
     <script>
-        // Fullscreen Logic
+        // Fullscreen Logic for Safari & Chrome
         const fsBtn = document.getElementById('fs-btn');
         fsBtn.addEventListener('click', () => {
             const docElm = document.documentElement;
