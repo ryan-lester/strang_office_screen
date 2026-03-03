@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Strang Slideshow - Buffered</title>
+    <title>Strang Slideshow - Synced & Buffered</title>
     <style>
         @import url('https://fonts.cdnfonts.com/css/din-pro');
 
@@ -84,52 +84,26 @@
 
     <script>
         // --- CONFIGURATION ---
-        // REMOVED THE LEADING SLASH BELOW
         const path = 'soft_opening/'; 
-        const slideDuration = 20000; // 20 Seconds per slide
+        const slideDuration = 20000; // 20 Seconds
 
         const slides = [
-            'strang_slides-1.jpg',
-            'strang_slides-2.jpg',
-            'strang_slides-3.jpg',
-            'strang_slides-4.jpg',
-            'strang_slides-5.jpg',
-            'strang_slides-6.jpg',
-            'strang_slides-7.jpg',
-            'strang_slides-8.jpg',
-            'strang_slides-9.jpg',
-            'strang_slides-10.jpg',
-            'strang_slides-11.jpg',
-            'strang_slides-12.jpg',
-            'strang_slides-13.jpg',
-            'strang_slides-14.jpg',
-            'strang_slides-15.jpg',
-            'strang_slides-16.jpg',
-            'strang_slides-17.jpg',
-            'strang_slides-18.jpg',
-            'strang_slides-19.jpg',
-            'strang_slides-20.jpg',
-            'strang_slides-21.jpg',
-            'strang_slides-22.jpg',
-            'strang_slides-23.jpg',
-            'strang_slides-24.jpg',
-            'strang_slides-25.jpg',
-            'strang_slides-26.jpg',
-            'strang_slides-27.jpg',
-            'strang_slides-28.jpg',
-            'strang_slides-29.jpg',
-            'strang_slides-30.jpg',
-            'strang_slides-31.jpg',
-            'strang_slides-32.jpg',
-            'strang_slides-33.jpg',
-            'strang_slides-34.jpg',
-            'strang_slides-35.jpg',
-            'strang_slides-36.jpg',
-            'strang_slides-37.jpg',
-            'strang_slides-38.jpg'
+            'strang_slides-1.jpg', 'strang_slides-2.jpg', 'strang_slides-3.jpg',
+            'strang_slides-4.jpg', 'strang_slides-5.jpg', 'strang_slides-6.jpg',
+            'strang_slides-7.jpg', 'strang_slides-8.jpg', 'strang_slides-9.jpg',
+            'strang_slides-10.jpg', 'strang_slides-11.jpg', 'strang_slides-12.jpg',
+            'strang_slides-13.jpg', 'strang_slides-14.jpg', 'strang_slides-15.jpg',
+            'strang_slides-16.jpg', 'strang_slides-17.jpg', 'strang_slides-18.jpg',
+            'strang_slides-19.jpg', 'strang_slides-20.jpg', 'strang_slides-21.jpg',
+            'strang_slides-22.jpg', 'strang_slides-23.jpg', 'strang_slides-24.jpg',
+            'strang_slides-25.jpg', 'strang_slides-26.jpg', 'strang_slides-27.jpg',
+            'strang_slides-28.jpg', 'strang_slides-29.jpg', 'strang_slides-30.jpg',
+            'strang_slides-31.jpg', 'strang_slides-32.jpg', 'strang_slides-33.jpg',
+            'strang_slides-34.jpg', 'strang_slides-35.jpg', 'strang_slides-36.jpg',
+            'strang_slides-37.jpg', 'strang_slides-38.jpg'
         ];
 
-        // --- PRELOAD LOGIC ---
+        // --- PRELOADER ---
         let loadedCount = 0;
         const totalImages = slides.length;
         const imageObjects = []; 
@@ -138,68 +112,66 @@
             for (let i = 0; i < totalImages; i++) {
                 const img = new Image();
                 img.src = path + slides[i];
-                
-                img.onload = () => { onImageLoaded(); };
-                img.onerror = () => { 
-                    console.error("Failed to load:", img.src);
-                    onImageLoaded(); 
-                }; 
-                
-                imageObjects[i] = img; // Keep in memory
+                img.onload = () => onImageLoaded();
+                img.onerror = () => {
+                    console.error("Failed:", img.src);
+                    onImageLoaded();
+                };
+                imageObjects[i] = img;
             }
         }
 
         function onImageLoaded() {
             loadedCount++;
             const percent = Math.floor((loadedCount / totalImages) * 100);
-            
-            // Update UI
             document.getElementById('progress-text').innerText = `LOADING ${percent}%`;
             document.getElementById('progress-bar-fill').style.width = `${percent}%`;
 
             if (loadedCount >= totalImages) {
-                // All done! Fade out loader and start show
                 setTimeout(() => {
                     const loader = document.getElementById('loader');
                     loader.style.opacity = '0';
                     setTimeout(() => { loader.style.display = 'none'; }, 500);
                     
-                    // START THE ENGINE
+                    // Fire the engine
                     requestAnimationFrame(updateSlide);
                 }, 500);
             }
         }
 
-        // --- PLAYBACK LOGIC ---
+        // --- STABLE SYNC ENGINE ---
         let currentIndex = -1; 
-        let activeSlot = 1;
-        const img1 = document.getElementById('slot-1');
-        const img2 = document.getElementById('slot-2');
-
-        function getSyncedIndex() {
-            const now = Date.now();
-            const globalTick = Math.floor(now / slideDuration);
-            return globalTick % slides.length;
-        }
 
         function updateSlide() {
-            const targetIndex = getSyncedIndex();
+            const now = Date.now();
+            
+            // 1. Create a "Time Bucket" (Integer only)
+            // This ensures every 20s block is a solid, unshakeable ID
+            const targetIndex = Math.floor(now / slideDuration) % slides.length;
 
+            // 2. Only run the swap if the bucket has actually changed
             if (targetIndex !== currentIndex) {
-                // We use the preloaded source from memory
-                const nextImageSrc = imageObjects[targetIndex].src;
-                
-                const currentImg = activeSlot === 1 ? img1 : img2;
-                const nextImg = activeSlot === 1 ? img2 : img1;
+                const img1 = document.getElementById('slot-1');
+                const img2 = document.getElementById('slot-2');
 
-                nextImg.src = nextImageSrc;
-                nextImg.classList.add('active');
-                currentImg.classList.remove('active');
+                // 3. Determine visibility based on DOM reality, not variables
+                const activeImg = img1.classList.contains('active') ? img1 : img2;
+                const hiddenImg = (activeImg === img1) ? img2 : img1;
 
-                activeSlot = activeSlot === 1 ? 2 : 1;
+                // 4. Update hidden slot with the new image
+                hiddenImg.src = imageObjects[targetIndex].src;
+
+                // 5. Swap visibility
+                hiddenImg.classList.add('active');
+                activeImg.classList.remove('active');
+
+                // 6. Lock the index so it doesn't fire again for 20 seconds
                 currentIndex = targetIndex;
+                
+                console.log(`Switched to Slide ${targetIndex + 1}`);
             }
 
+            // High-performance loop
             requestAnimationFrame(updateSlide);
         }
 
